@@ -12,7 +12,7 @@ export default function Home() {
     <main className="min-h-screen flex flex-col items-center justify-start py-20 px-4 bg-[#0a0a0c]">
       {/* Header */}
       <header className="mb-16 text-center animate-fade-in">
-        <h1 className="text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-600 mb-4 tracking-tighter">
+        <h1 className="text-6xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-indigo-500 to-purple-600 mb-4 tracking-tighter">
           TYPEFLOW
         </h1>
         <p className="text-gray-500 text-lg font-medium tracking-wide uppercase">
@@ -48,7 +48,7 @@ export default function Home() {
       </div>
 
       {/* Footer / Decorative */}
-      <footer className="mt-auto pt-20 pb-8 text-gray-700 text-xs font-mono">
+      <footer className="mt-auto pt-20 pb-8 text-gray-400 text-xs font-mono">
         &copy; 2026 TYPEFLOW ENGINE • BUILT FOR SPEED & ACCURACY
       </footer>
     </main>
