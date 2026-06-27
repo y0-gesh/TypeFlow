@@ -77,18 +77,18 @@ Upload → Clean → Chunk → Difficulty → Lesson → Typing → Progress
 
 ### Frontend
 
-* React (Vite / Next.js)
+* React ( Next.js)
 * Tailwind CSS
 * Zustand (state management)
 
-### Backend (Future)
+### Backend
 
 * FastAPI
-* MongoDB
+* PostgreSQL
 
 ---
 
-## Project Structure
+## Project Structure for frontend
 
 ```
 src/
