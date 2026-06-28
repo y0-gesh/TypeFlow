@@ -19,6 +19,8 @@ import {
   Sparkles
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useDocumentStore } from "@/store/useDocumentStore";
 
 export default function LibraryPage() {
   const {
@@ -31,6 +33,19 @@ export default function LibraryPage() {
     deleteLibrary,
     toggleFavorite
   } = useLibraryStore();
+
+  const router = useRouter();
+  const { resumeLibraryPractice } = useDocumentStore();
+  const [resumeLoading, setResumeLoading] = useState<string | null>(null);
+
+  const resumePractice = async (libId: string) => {
+    setResumeLoading(libId);
+    try {
+      await resumeLibraryPractice(libId, router);
+    } finally {
+      setResumeLoading(null);
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -181,7 +196,8 @@ export default function LibraryPage() {
           {filteredLibraries.map((lib) => (
             <Card
               key={lib.id}
-              className="group hover:shadow-lg hover:border-primary/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden relative"
+              onClick={() => resumePractice(lib.id)}
+              className="group hover:shadow-lg hover:border-primary/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden relative cursor-pointer active:scale-[0.99] select-none"
             >
               {/* Star corner indicator */}
               <button
@@ -203,7 +219,11 @@ export default function LibraryPage() {
               <CardHeader className="space-y-2 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-primary/10 text-primary rounded-xl shrink-0 group-hover:scale-105 transition-transform duration-200">
-                    <Folder className="h-5.5 w-5.5 fill-current" />
+                    {resumeLoading === lib.id ? (
+                      <Loader2 className="h-5.5 w-5.5 animate-spin" />
+                    ) : (
+                      <Folder className="h-5.5 w-5.5 fill-current" />
+                    )}
                   </div>
                   <div className="min-w-0 pr-8">
                     <CardTitle className="text-lg font-black truncate">{lib.name}</CardTitle>
@@ -224,9 +244,9 @@ export default function LibraryPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs font-semibold text-muted-foreground">
                       <span>Documents: {lib.document_count || 0}</span>
-                      <span>Progress: 0%</span>
+                      <span>Progress: {lib.progress_percent || 0}%</span>
                     </div>
-                    <Progress value={0} className="h-1.5 rounded-full" />
+                    <Progress value={lib.progress_percent || 0} className="h-1.5 rounded-full" />
                   </div>
 
                   {/* Actions footer */}
@@ -235,7 +255,8 @@ export default function LibraryPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedLibrary(lib);
                           setEditName(lib.name);
                           setEditDescription(lib.description);
@@ -249,7 +270,8 @@ export default function LibraryPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedLibrary(lib);
                           setIsDeleteOpen(true);
                         }}
@@ -260,7 +282,7 @@ export default function LibraryPage() {
                       </Button>
                     </div>
 
-                    <Link href={`/dashboard/library/${lib.id}`}>
+                    <Link href={`/dashboard/library/${lib.id}`} onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="sm"

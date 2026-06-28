@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLibraryStore } from "@/store/useLibraryStore";
-import { useDocumentStore, Document } from "@/store/useDocumentStore";
+import { useDocumentStore, Document, Chapter, Lesson } from "@/store/useDocumentStore";
 import { useTypingStore } from "@/store/useTypingStore";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/vendors/ui/card";
 import { Button } from "@/vendors/ui/button";
@@ -18,7 +18,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   FolderOpen,
-  ArrowRight
+  ArrowRight,
+  Layers
 } from "lucide-react";
 
 interface PageProps {
@@ -31,8 +32,26 @@ export default function LibraryDetailsPage({ params }: PageProps) {
   const libraryId = resolvedParams.id;
 
   const { libraries, fetchLibraries } = useLibraryStore();
-  const { documents, loading, error, fetchDocuments, uploadDocument, deleteDocument } = useDocumentStore();
-  const { setRawContent } = useTypingStore();
+  const { 
+    documents, 
+    chapters, 
+    lessons, 
+    loading, 
+    error, 
+    fetchChaptersAndLessons, 
+    uploadDocument, 
+    deleteDocument 
+  } = useDocumentStore();
+  const { loadChapterLessons } = useTypingStore();
+
+  const [completedSet, setCompletedSet] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const progress = JSON.parse(localStorage.getItem("typeflow_progress") || '{"completedChunks":[]}');
+      setCompletedSet(new Set(progress.completedChunks || []));
+    }
+  }, []);
 
   // Uploader tabs & form state
   const [activeTab, setActiveTab] = useState<"upload" | "paste">("upload");
@@ -45,8 +64,8 @@ export default function LibraryDetailsPage({ params }: PageProps) {
 
   useEffect(() => {
     fetchLibraries();
-    fetchDocuments(libraryId);
-  }, [libraryId, fetchLibraries, fetchDocuments]);
+    fetchChaptersAndLessons(libraryId);
+  }, [libraryId, fetchLibraries, fetchChaptersAndLessons]);
 
   const library = libraries.find((l) => l.id === libraryId);
 
@@ -132,10 +151,51 @@ export default function LibraryDetailsPage({ params }: PageProps) {
     }
   };
 
-  const handleStartPractice = (doc: Document) => {
-    // Load document content into typing store and redirect to typing engine at homepage
-    setRawContent(doc.content);
+  const handlePracticeChapter = (chapterId: string) => {
+    const chapLessons = lessons
+      .filter((l) => l.chapter_id === chapterId)
+      .sort((a, b) => a.sequence_number - b.sequence_number);
+
+    if (chapLessons.length === 0) {
+      alert("This chapter has no lessons processed yet.");
+      return;
+    }
+
+    // Find first uncompleted lesson in this chapter
+    let startIndex = 0;
+    for (let i = 0; i < chapLessons.length; i++) {
+      if (!completedSet.has(chapLessons[i].id)) {
+        startIndex = i;
+        break;
+      }
+    }
+
+    loadChapterLessons(chapLessons, startIndex);
     router.push("/");
+  };
+
+  const handlePracticeDocument = (docId: string) => {
+    const docChapters = chapters
+      .filter((c) => c.document_id === docId)
+      .sort((a, b) => a.sequence_number - b.sequence_number);
+
+    if (docChapters.length === 0) {
+      alert("This document has no chapters processed yet.");
+      return;
+    }
+
+    // Find first incomplete chapter
+    let targetChapterId = docChapters[0].id;
+    for (const chap of docChapters) {
+      const chapLessons = lessons.filter((l) => l.chapter_id === chap.id);
+      const completedCount = chapLessons.filter((l) => completedSet.has(l.id)).length;
+      if (completedCount < chapLessons.length) {
+        targetChapterId = chap.id;
+        break;
+      }
+    }
+
+    handlePracticeChapter(targetChapterId);
   };
 
   return (
@@ -187,81 +247,138 @@ export default function LibraryDetailsPage({ params }: PageProps) {
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-secondary/10 border border-border/40 rounded-2xl gap-4 group"
+                      className="flex flex-col p-4 bg-secondary/10 border border-border/40 rounded-2xl gap-4 group"
                     >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="p-2.5 bg-primary/5 text-primary rounded-xl shrink-0 mt-0.5">
-                          <FileText className="h-5 w-5" />
+                      {/* Document Info Row */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="p-2.5 bg-primary/5 text-primary rounded-xl shrink-0 mt-0.5">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-bold truncate max-w-xs sm:max-w-md">
+                              {doc.title}
+                            </h4>
+                            <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-muted-foreground font-semibold">
+                              <span>
+                                Uploaded {new Date(doc.created_at).toLocaleDateString()}
+                              </span>
+                              <span>•</span>
+                              <span>{doc.content.length} characters</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-bold truncate max-w-xs sm:max-w-md">
-                            {doc.title}
-                          </h4>
-                          <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-muted-foreground font-semibold">
-                            <span>
-                              Uploaded {new Date(doc.created_at).toLocaleDateString()}
+
+                        {/* Status and Action Buttons */}
+                        <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                          {/* Status Pills */}
+                          {doc.status === "Uploaded" && (
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-secondary text-muted-foreground border border-border">
+                              Uploaded
                             </span>
-                            <span>•</span>
-                            <span>{doc.content.length} characters</span>
+                          )}
+                          {doc.status === "Queued" && (
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 flex items-center gap-1.5 animate-pulse">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Queued
+                            </span>
+                          )}
+                          {doc.status === "Processing" && (
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center gap-1.5 animate-pulse">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Processing
+                            </span>
+                          )}
+                          {doc.status === "Completed" && (
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-green-500/10 text-green-500 border border-green-500/20 flex items-center gap-1.5">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Completed
+                            </span>
+                          )}
+                          {doc.status === "Failed" && (
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-destructive/10 text-destructive border border-destructive/20 flex items-center gap-1.5">
+                              <AlertTriangle className="h-3 w-3" />
+                              Failed
+                            </span>
+                          )}
+
+                          <div className="flex items-center gap-2">
+                            {doc.status === "Completed" && (
+                              <Button
+                                onClick={() => handlePracticeDocument(doc.id)}
+                                size="sm"
+                                className="h-8 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-1.5 flex items-center cursor-pointer"
+                              >
+                                <Play className="h-3.5 w-3.5 fill-current" />
+                                Resume
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteDocument(doc.id)}
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                              title="Delete Document"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </div>
                       </div>
 
-                      {/* Status and Action Buttons */}
-                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                        {/* Status Pills */}
-                        {doc.status === "Uploaded" && (
-                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-secondary text-muted-foreground border border-border">
-                            Uploaded
-                          </span>
-                        )}
-                        {doc.status === "Queued" && (
-                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 flex items-center gap-1.5 animate-pulse">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Queued
-                          </span>
-                        )}
-                        {doc.status === "Processing" && (
-                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center gap-1.5 animate-pulse">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Processing
-                          </span>
-                        )}
-                        {doc.status === "Completed" && (
-                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-green-500/10 text-green-500 border border-green-500/20 flex items-center gap-1.5">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Completed
-                          </span>
-                        )}
-                        {doc.status === "Failed" && (
-                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-destructive/10 text-destructive border border-destructive/20 flex items-center gap-1.5">
-                            <AlertTriangle className="h-3 w-3" />
-                            Failed
-                          </span>
-                        )}
-
-                        <div className="flex items-center gap-2">
-                          {doc.status === "Completed" && (
-                            <Button
-                              onClick={() => handleStartPractice(doc)}
-                              size="sm"
-                              className="h-8 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-1.5 flex items-center cursor-pointer"
-                            >
-                              <Play className="h-3.5 w-3.5 fill-current" />
-                              Practice
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteDocument(doc.id)}
-                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                            title="Delete Document"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                      {/* Chapters Sub-listing */}
+                      {doc.status === "Completed" && (
+                        <div className="mt-2 border-t border-border/30 pt-4 pl-0 sm:pl-4 space-y-3">
+                          <div className="text-[10px] uppercase font-black text-muted-foreground/70 tracking-widest mb-1 flex items-center gap-1.5">
+                            <Layers className="h-3.5 w-3.5 text-primary" />
+                            Document Chapters
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {chapters
+                              .filter((c) => c.document_id === doc.id)
+                              .sort((a, b) => a.sequence_number - b.sequence_number)
+                              .map((chap) => {
+                                const chapLessons = lessons
+                                  .filter((l) => l.chapter_id === chap.id)
+                                  .sort((a, b) => a.sequence_number - b.sequence_number);
+                                
+                                const completedCount = chapLessons.filter((l) => completedSet.has(l.id)).length;
+                                const totalCount = chapLessons.length;
+                                const isChapCompleted = completedCount === totalCount && totalCount > 0;
+                                const isChapInProgress = completedCount > 0 && completedCount < totalCount;
+                                
+                                // Color representations: Completed (emerald), In Progress (blue), Not Started (secondary)
+                                let statusColorClass = "bg-secondary/40 border-border/50 text-muted-foreground";
+                                if (isChapCompleted) {
+                                  statusColorClass = "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15";
+                                } else if (isChapInProgress) {
+                                  statusColorClass = "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/15";
+                                } else {
+                                  statusColorClass = "bg-secondary/10 border-border/30 text-muted-foreground/80 hover:bg-secondary/25";
+                                }
+                                
+                                return (
+                                  <div
+                                    key={chap.id}
+                                    onClick={() => handlePracticeChapter(chap.id)}
+                                    className={`flex items-center justify-between p-3 border rounded-2xl cursor-pointer transition-all duration-200 active:scale-[0.98] group/chap ${statusColorClass}`}
+                                  >
+                                    <div className="min-w-0 pr-2">
+                                      <div className="text-xs font-bold truncate group-hover/chap:underline">
+                                        {chap.title}
+                                      </div>
+                                      <div className="text-[10px] opacity-75 font-semibold mt-0.5">
+                                        {completedCount}/{totalCount} lessons completed
+                                      </div>
+                                    </div>
+                                    <Play className="h-3 w-3 shrink-0 opacity-0 group-hover/chap:opacity-100 transition-opacity fill-current mr-1 text-primary" />
+                                  </div>
+                                );
+                              })}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>

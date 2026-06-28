@@ -9,6 +9,7 @@ export interface Library {
   is_favorite: boolean;
   created_at: string;
   document_count?: number;
+  progress_percent?: number;
 }
 
 interface LibraryStore {
@@ -47,11 +48,20 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
       if (isMockAuth) {
         // Mock LocalStorage Implementation
         const mockLibs = getMockLibraries();
-        // Mock document count calculation (for now mock it as 0, Phase 4 will link actual docs)
-        const libsWithCount = mockLibs.map(lib => ({
-          ...lib,
-          document_count: lib.document_count || 0
-        }));
+        const mockDocs = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("typeflow_documents_mock") || "[]") : [];
+        
+        const libsWithCount = mockLibs.map(lib => {
+          const libDocs = mockDocs.filter((d: any) => d.library_id === lib.id);
+          const totalDocs = libDocs.length;
+          const completedDocs = libDocs.filter((d: any) => d.status === "Completed").length;
+          const progress_percent = totalDocs > 0 ? Math.round((completedDocs / totalDocs) * 100) : 0;
+
+          return {
+            ...lib,
+            document_count: totalDocs,
+            progress_percent
+          };
+        });
         set({ libraries: libsWithCount, loading: false });
       } else {
         // Actual Supabase Implementation
@@ -62,24 +72,31 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
           return;
         }
 
-        // Fetch libraries and join with documents to get counts
+        // Fetch libraries and join with documents to get counts and status
         const { data, error } = await supabase
           .from("libraries")
-          .select("*, documents(id)")
+          .select("*, documents(id, status)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
 
-        const mappedLibraries: Library[] = (data || []).map((lib: any) => ({
-          id: lib.id,
-          user_id: lib.user_id,
-          name: lib.name,
-          description: lib.description || "",
-          is_favorite: lib.is_favorite || false,
-          created_at: lib.created_at,
-          document_count: lib.documents?.length || 0,
-        }));
+        const mappedLibraries: Library[] = (data || []).map((lib: any) => {
+          const totalDocs = lib.documents?.length || 0;
+          const completedDocs = lib.documents?.filter((d: any) => d.status === "Completed").length || 0;
+          const progress_percent = totalDocs > 0 ? Math.round((completedDocs / totalDocs) * 100) : 0;
+
+          return {
+            id: lib.id,
+            user_id: lib.user_id,
+            name: lib.name,
+            description: lib.description || "",
+            is_favorite: lib.is_favorite || false,
+            created_at: lib.created_at,
+            document_count: totalDocs,
+            progress_percent,
+          };
+        });
 
         set({ libraries: mappedLibraries, loading: false });
       }

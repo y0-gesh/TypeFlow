@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { supabase, isMockAuth } from "@/lib/supabase";
 import { contentEngine } from "@/engines/contentEngine";
+import { useTypingStore } from "@/store/useTypingStore";
 
 export interface Document {
   id: string;
@@ -13,11 +14,30 @@ export interface Document {
   created_at: string;
 }
 
+export interface Chapter {
+  id: string;
+  document_id: string;
+  title: string;
+  sequence_number: number;
+}
+
+export interface Lesson {
+  id: string;
+  chapter_id: string;
+  content: string;
+  difficulty: number;
+  sequence_number: number;
+}
+
 interface DocumentStore {
   documents: Document[];
+  chapters: Chapter[];
+  lessons: Lesson[];
   loading: boolean;
   error: string | null;
   fetchDocuments: (libraryId: string) => Promise<void>;
+  fetchChaptersAndLessons: (libraryId: string) => Promise<void>;
+  resumeLibraryPractice: (libraryId: string, router: any) => Promise<boolean>;
   uploadDocument: (
     libraryId: string,
     title: string,
@@ -29,7 +49,6 @@ interface DocumentStore {
 }
 
 const LOCAL_STORAGE_KEY = "typeflow_documents_mock";
-const LESSONS_STORAGE_KEY = "typeflow_lessons_mock";
 
 // Helper for Mock Local Storage
 const getMockDocs = (): Document[] => {
@@ -45,6 +64,8 @@ const saveMockDocs = (docs: Document[]): void => {
 
 export const useDocumentStore = create<DocumentStore>((set, get) => ({
   documents: [],
+  chapters: [],
+  lessons: [],
   loading: false,
   error: null,
 
@@ -68,6 +89,147 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     } catch (err: any) {
       set({ error: err.message || "Failed to fetch documents", loading: false });
     }
+  },
+
+  fetchChaptersAndLessons: async (libraryId: string) => {
+    set({ loading: true, error: null });
+    try {
+      if (isMockAuth) {
+        const mockDocs = getMockDocs().filter((doc) => doc.library_id === libraryId);
+        const docIds = mockDocs.map(d => d.id);
+        
+        const mockChapters: Chapter[] = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("typeflow_chapters_mock") || "[]") : [];
+        const filteredChapters = mockChapters.filter(c => docIds.includes(c.document_id));
+        const chapIds = filteredChapters.map(c => c.id);
+
+        const mockLessons: Lesson[] = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("typeflow_lessons_mock") || "[]") : [];
+        const filteredLessons = mockLessons.filter(l => chapIds.includes(l.chapter_id));
+
+        set({
+          documents: mockDocs,
+          chapters: filteredChapters,
+          lessons: filteredLessons,
+          loading: false
+        });
+      } else {
+        // 1. Fetch documents
+        const { data: docs, error: docError } = await supabase
+          .from("documents")
+          .select("*")
+          .eq("library_id", libraryId)
+          .order("created_at", { ascending: true });
+
+        if (docError) throw docError;
+        if (!docs || docs.length === 0) {
+          set({ documents: [], chapters: [], lessons: [], loading: false });
+          return;
+        }
+
+        const docIds = docs.map(d => d.id);
+
+        // 2. Fetch chapters
+        const { data: chaps, error: chapError } = await supabase
+          .from("chapters")
+          .select("*")
+          .in("document_id", docIds)
+          .order("sequence_number", { ascending: true });
+
+        if (chapError) throw chapError;
+        if (!chaps || chaps.length === 0) {
+          set({ documents: docs, chapters: [], lessons: [], loading: false });
+          return;
+        }
+
+        const chapIds = chaps.map(c => c.id);
+
+        // 3. Fetch lessons
+        const { data: less, error: lessError } = await supabase
+          .from("lessons")
+          .select("*")
+          .in("chapter_id", chapIds)
+          .order("sequence_number", { ascending: true });
+
+        if (lessError) throw lessError;
+
+        set({
+          documents: docs,
+          chapters: chaps,
+          lessons: less || [],
+          loading: false
+        });
+      }
+    } catch (err: any) {
+      set({ error: err.message || "Failed to fetch chapters & lessons", loading: false });
+    }
+  },
+
+  resumeLibraryPractice: async (libraryId: string, router: any): Promise<boolean> => {
+    // 1. Fetch latest data to have correct lessons and chapters mapping
+    await get().fetchChaptersAndLessons(libraryId);
+    const { documents: docs, chapters: chaps, lessons: less } = get();
+
+    if (docs.length === 0 || chaps.length === 0 || less.length === 0) {
+      alert("No completed lessons or processed chapters are ready to practice yet. Please upload a document first!");
+      return false;
+    }
+
+    // 2. Load completed chunks from progress tracking
+    const progress = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("typeflow_progress") || '{"completedChunks":[]}') : { completedChunks: [] };
+    const completedSet = new Set(progress.completedChunks || []);
+
+    // 3. Search sequentially for the first uncompleted lesson
+    let targetLesson: Lesson | null = null;
+    let targetChapterLessons: Lesson[] = [];
+
+    // Sort chapters and lessons to ensure sequential order
+    const sortedDocs = [...docs].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    
+    for (const doc of sortedDocs) {
+      const docChapters = [...chaps]
+        .filter(c => c.document_id === doc.id)
+        .sort((a, b) => a.sequence_number - b.sequence_number);
+
+      for (const chap of docChapters) {
+        const chapLessons = [...less]
+          .filter(l => l.chapter_id === chap.id)
+          .sort((a, b) => a.sequence_number - b.sequence_number);
+
+        for (const les of chapLessons) {
+          if (!completedSet.has(les.id)) {
+            targetLesson = les;
+            targetChapterLessons = chapLessons;
+            break;
+          }
+        }
+        if (targetLesson) break;
+      }
+      if (targetLesson) break;
+    }
+
+    // Fallback: If everything is completed, practice the first chapter's lessons
+    if (!targetLesson) {
+      const firstDoc = sortedDocs[0];
+      const firstChap = [...chaps]
+        .filter(c => c.document_id === firstDoc.id)
+        .sort((a, b) => a.sequence_number - b.sequence_number)[0];
+      
+      targetChapterLessons = [...less]
+        .filter(l => l.chapter_id === firstChap.id)
+        .sort((a, b) => a.sequence_number - b.sequence_number);
+      
+      targetLesson = targetChapterLessons[0];
+    }
+
+    if (targetLesson && targetChapterLessons.length > 0) {
+      const startIndex = targetChapterLessons.findIndex(l => l.id === targetLesson!.id);
+      
+      // Load lessons and start practicing at the specified lesson chunk index
+      useTypingStore.getState().loadChapterLessons(targetChapterLessons, startIndex);
+      router.push("/");
+      return true;
+    }
+
+    return false;
   },
 
   uploadDocument: async (libraryId: string, title: string, content: string, file?: File) => {

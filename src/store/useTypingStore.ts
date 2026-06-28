@@ -42,6 +42,7 @@ export interface TypingStore {
   focusMode: boolean;
   
   setRawContent: (rawText: string) => void;
+  loadChapterLessons: (lessonsList: any[], startIndex: number) => void;
   updateInput: (input: string) => void;
   completeChunk: () => void;
   nextChunk: () => void;
@@ -93,6 +94,25 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
     set({
       chunks: processedChunks,
       currentIndex: 0,
+      userInput: "",
+      timeElapsed: 0,
+      totalKeysPressed: 0,
+      isPaused: false,
+      lessonStatus: "idle",
+      stats: { wpm: 0, accuracy: 100, correctChars: 0, totalCharsTyped: 0 }
+    });
+  },
+
+  loadChapterLessons: (lessonsList: any[], startIndex: number) => {
+    const mappedChunks = lessonsList.map((les) => ({
+      id: les.id,
+      text: les.content,
+      difficulty: les.difficulty || 3
+    }));
+
+    set({
+      chunks: mappedChunks,
+      currentIndex: startIndex,
       userInput: "",
       timeElapsed: 0,
       totalKeysPressed: 0,
