@@ -1,9 +1,15 @@
 "use client";
 import React, { useEffect } from "react";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { useTypingStore } from "@/store/useTypingStore";
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { fontFamily } = useSettingsStore();
+  const { syncProgress } = useTypingStore();
+
+  useEffect(() => {
+    syncProgress();
+  }, [syncProgress]);
 
   useEffect(() => {
     // Apply font class to document.body

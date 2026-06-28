@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { contentEngine, Chunk } from "@/engines/contentEngine";
 import { typingEngine } from "@/engines/typingEngine";
 import { playClickSound, playErrorSound } from "@/utils/sound";
+import { supabase, isMockAuth } from "@/lib/supabase";
 
 const STORAGE_KEY = "typeflow_progress";
 
@@ -45,6 +46,7 @@ export interface TypingStore {
   loadChapterLessons: (lessonsList: any[], startIndex: number) => void;
   updateInput: (input: string) => void;
   completeChunk: () => void;
+  syncProgress: () => Promise<void>;
   nextChunk: () => void;
   retryChunk: () => void;
   
@@ -185,26 +187,189 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
     }
   },
 
-  completeChunk: () => {
-    const { stats, currentIndex, chunks, progress } = get();
+  completeChunk: async () => {
+    const { stats, currentIndex, chunks, progress, timeElapsed } = get();
     const currentChunk = chunks[currentIndex];
     if (!currentChunk) return;
 
-    if (stats.accuracy >= 90) {
+    const isCompleted = stats.accuracy >= 90;
+    const accuracyVal = stats.accuracy;
+    const wpmVal = stats.wpm;
+    const totalChars = stats.totalCharsTyped;
+
+    if (isMockAuth) {
+      // 1. Save typing session to mock
+      const mockSessions = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("typeflow_typing_sessions_mock") || "[]") : [];
+      const newSession = {
+        id: `mock-sess-${Math.random().toString(36).substring(2, 9)}`,
+        user_id: "mock-user",
+        lesson_id: currentChunk.id,
+        wpm: wpmVal,
+        accuracy: accuracyVal,
+        chars_typed: totalChars,
+        time_seconds: timeElapsed,
+        created_at: new Date().toISOString()
+      };
+      localStorage.setItem("typeflow_typing_sessions_mock", JSON.stringify([...mockSessions, newSession]));
+
+      // 2. Save lesson progress to mock
+      const mockProgress = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("typeflow_lesson_progress_mock") || "[]") : [];
+      const existingIdx = mockProgress.findIndex((p: any) => p.user_id === "mock-user" && p.lesson_id === currentChunk.id);
+      
+      if (existingIdx !== -1) {
+        const record = mockProgress[existingIdx];
+        record.attempts_count += 1;
+        record.last_practiced_at = new Date().toISOString();
+        if (isCompleted) {
+          record.is_completed = true;
+          record.best_wpm = Math.max(Number(record.best_wpm), wpmVal);
+          record.best_accuracy = Math.max(Number(record.best_accuracy), accuracyVal);
+        }
+      } else {
+        mockProgress.push({
+          id: `mock-prog-${Math.random().toString(36).substring(2, 9)}`,
+          user_id: "mock-user",
+          lesson_id: currentChunk.id,
+          is_completed: isCompleted,
+          best_wpm: isCompleted ? wpmVal : 0,
+          best_accuracy: isCompleted ? accuracyVal : 0,
+          attempts_count: 1,
+          last_practiced_at: new Date().toISOString()
+        });
+      }
+      localStorage.setItem("typeflow_lesson_progress_mock", JSON.stringify(mockProgress));
+
+      // Update basic completed chunks list
       const newProgress: ProgressState = {
-        completedChunks: [...progress.completedChunks, currentChunk.id],
+        completedChunks: isCompleted 
+          ? Array.from(new Set([...progress.completedChunks, currentChunk.id]))
+          : progress.completedChunks,
         history: [...progress.history, {
           chunkId: currentChunk.id,
-          wpm: stats.wpm,
-          accuracy: stats.accuracy,
+          wpm: wpmVal,
+          accuracy: accuracyVal,
           date: new Date().toISOString()
         }]
       };
-
       saveProgress(newProgress);
-      set({ lessonStatus: "completed", progress: newProgress });
+      set({ 
+        lessonStatus: isCompleted ? "completed" : "retry",
+        progress: newProgress
+      });
     } else {
-      set({ lessonStatus: "retry" });
+      // Supabase Mode
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (!user) throw new Error("No session found");
+
+        // 1. Insert typing session
+        const { error: sessionError } = await supabase
+          .from("typing_sessions")
+          .insert({
+            user_id: user.id,
+            lesson_id: currentChunk.id,
+            wpm: wpmVal,
+            accuracy: accuracyVal,
+            chars_typed: totalChars,
+            time_seconds: timeElapsed
+          });
+
+        if (sessionError) console.error("Failed to insert typing session:", sessionError.message);
+
+        // 2. Fetch existing lesson progress to update
+        const { data: existingProg, error: fetchError } = await supabase
+          .from("lesson_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("lesson_id", currentChunk.id)
+          .maybeSingle();
+
+        if (fetchError) console.error("Failed to query lesson progress:", fetchError.message);
+
+        if (existingProg) {
+          const updates: any = {
+            attempts_count: existingProg.attempts_count + 1,
+            last_practiced_at: new Date().toISOString()
+          };
+          if (isCompleted) {
+            updates.is_completed = true;
+            updates.best_wpm = Math.max(Number(existingProg.best_wpm), wpmVal);
+            updates.best_accuracy = Math.max(Number(existingProg.best_accuracy), accuracyVal);
+          }
+          const { error: updateError } = await supabase
+            .from("lesson_progress")
+            .update(updates)
+            .eq("id", existingProg.id);
+
+          if (updateError) console.error("Failed to update lesson progress:", updateError.message);
+        } else {
+          const { error: insertError } = await supabase
+            .from("lesson_progress")
+            .insert({
+              user_id: user.id,
+              lesson_id: currentChunk.id,
+              is_completed: isCompleted,
+              best_wpm: isCompleted ? wpmVal : 0,
+              best_accuracy: isCompleted ? accuracyVal : 0,
+              attempts_count: 1,
+              last_practiced_at: new Date().toISOString()
+            });
+
+          if (insertError) console.error("Failed to insert lesson progress:", insertError.message);
+        }
+
+        // Update local state completed chunks list
+        const newProgress: ProgressState = {
+          completedChunks: isCompleted
+            ? Array.from(new Set([...progress.completedChunks, currentChunk.id]))
+            : progress.completedChunks,
+          history: [...progress.history, {
+            chunkId: currentChunk.id,
+            wpm: wpmVal,
+            accuracy: accuracyVal,
+            date: new Date().toISOString()
+          }]
+        };
+        saveProgress(newProgress);
+        set({ 
+          lessonStatus: isCompleted ? "completed" : "retry",
+          progress: newProgress
+        });
+      } catch (err) {
+        console.error("Failed to save progress in Supabase:", err);
+        set({ lessonStatus: isCompleted ? "completed" : "retry" });
+      }
+    }
+  },
+
+  syncProgress: async () => {
+    if (isMockAuth) {
+      set({ progress: loadProgress() });
+    } else {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (!user) return;
+
+        const { data: progressList, error } = await supabase
+          .from("lesson_progress")
+          .select("lesson_id")
+          .eq("user_id", user.id)
+          .eq("is_completed", true);
+
+        if (error) throw error;
+
+        const completedList = (progressList || []).map((p) => p.lesson_id);
+        set({
+          progress: {
+            completedChunks: completedList,
+            history: loadProgress().history
+          }
+        });
+      } catch (e) {
+        console.error("Failed to sync progress:", e);
+      }
     }
   },
 
