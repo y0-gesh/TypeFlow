@@ -4,12 +4,40 @@ import { useSettingsStore } from "@/store/useSettingsStore";
 import { useTypingStore } from "@/store/useTypingStore";
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const { fontFamily } = useSettingsStore();
+  const { fontFamily, theme } = useSettingsStore();
   const { syncProgress } = useTypingStore();
 
   useEffect(() => {
     syncProgress();
   }, [syncProgress]);
+
+  useEffect(() => {
+    // List of custom themes
+    const themeClasses = [
+      "theme-dracula",
+      "theme-gruvbox",
+      "theme-nord",
+      "theme-monokai",
+      "theme-minimal",
+      "theme-high-contrast"
+    ];
+    
+    // Remove existing themes
+    document.body.classList.remove(...themeClasses);
+    
+    if (theme !== "dark" && theme !== "light") {
+      // Add custom theme class
+      document.body.classList.add(`theme-${theme}`);
+      // Custom themes are dark mode backgrounds
+      document.documentElement.classList.add("dark");
+    } else {
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    }
+  }, [theme]);
 
   useEffect(() => {
     // Apply font class to document.body

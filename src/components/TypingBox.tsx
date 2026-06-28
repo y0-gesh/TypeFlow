@@ -36,7 +36,7 @@ export default function TypingBox() {
     toggleFocusMode
   } = useTypingStore();
 
-  const { fontSize } = useSettingsStore();
+  const { fontSize, caretStyle, keyboardLayout, zenMode } = useSettingsStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -113,7 +113,8 @@ export default function TypingBox() {
     setIsFocused(true);
   };
 
-  const showStatsHeader = !focusMode || lessonStatus !== "typing";
+  const showStatsHeader = (!focusMode && !zenMode) || lessonStatus !== "typing";
+  const showKeyboard = !zenMode && lessonStatus === "typing";
 
   return (
     <div className="relative w-full max-w-4xl mx-auto mt-8 px-4 animate-fade-in space-y-6">
@@ -201,22 +202,29 @@ export default function TypingBox() {
           style={{ fontSize: `${fontSize}px` }}
         >
           {characters.map((char, index) => {
-            // Colors Tailored via custom palettes
             let colorClass = "text-muted-foreground/35"; // Uncompleted
             let cursorClass = "";
 
             if (index < userInput.length) {
               colorClass =
                 userInput[index] === char
-                  ? "text-foreground font-semibold dark:text-gray-100" // Correct (natural text body color)
-                  : "text-rose-500 font-bold bg-rose-500/10 border-b border-rose-500 decoration-none"; // Incorrect (light coral background, bold red)
+                  ? "text-foreground font-semibold dark:text-gray-100" // Correct
+                  : "text-rose-500 font-bold bg-rose-500/10 border-b border-rose-500 decoration-none"; // Incorrect
             }
 
-            // Blinking Smooth Caret indicator
+            // Blinking Caret indicator based on caretStyle setting
             if (index === userInput.length) {
-              cursorClass = isFocused 
-                ? "border-l-3 border-primary animate-cursor-blink -ml-[3px]" 
-                : "";
+              if (isFocused) {
+                if (caretStyle === "block") {
+                  cursorClass = "bg-primary/80 text-primary-foreground px-0.5 animate-cursor-blink";
+                } else if (caretStyle === "underline") {
+                  cursorClass = "border-b-2 border-primary animate-cursor-blink";
+                } else if (caretStyle === "hidden") {
+                  cursorClass = "";
+                } else {
+                  cursorClass = "border-l-3 border-primary animate-cursor-blink -ml-[3px]";
+                }
+              }
             }
 
             return (
@@ -230,8 +238,12 @@ export default function TypingBox() {
           })}
           
           {/* Caret at the end of the text if fully completed */}
-          {userInput.length === characters.length && isFocused && (
-            <span className="border-l-3 border-primary animate-cursor-blink -ml-[3px] h-[1.2em] self-center" />
+          {userInput.length === characters.length && isFocused && caretStyle !== "hidden" && (
+            <span className={
+              caretStyle === "block" ? "bg-primary/80 text-primary-foreground px-1 py-0.5 animate-cursor-blink h-[1.2em] self-center" :
+              caretStyle === "underline" ? "border-b-2 border-primary animate-cursor-blink w-2.5 h-[1.2em] self-center" :
+              "border-l-3 border-primary animate-cursor-blink -ml-[3px] h-[1.2em] self-center"
+            } />
           )}
         </div>
 
@@ -267,6 +279,94 @@ export default function TypingBox() {
           </div>
         )}
       </div>
+
+      {/* 3. VIRTUAL KEYBOARD LAYOUT DISPLAY */}
+      {showKeyboard && (
+        <div className="p-4 bg-secondary/5 border border-border/40 rounded-3xl space-y-2 max-w-xl mx-auto animate-fade-in select-none">
+          <div className="text-[10px] uppercase font-black text-muted-foreground/75 tracking-widest mb-2 flex items-center justify-between px-1">
+            <span className="flex items-center gap-1.5">
+              <Keyboard className="h-3.5 w-3.5" />
+              Keyboard Layout Guide
+            </span>
+            <span className="font-mono bg-secondary/80 px-2 py-0.5 rounded border border-border/40">
+              {keyboardLayout}
+            </span>
+          </div>
+
+          {(() => {
+            let rows: string[][] = [];
+            if (keyboardLayout === "dvorak") {
+              rows = [
+                ["'", ",", ".", "p", "y", "f", "g", "c", "r", "l"],
+                ["a", "o", "e", "u", "i", "d", "h", "t", "n", "s"],
+                [";", "q", "j", "k", "x", "b", "m", "w", "v", "z"]
+              ];
+            } else if (keyboardLayout === "colemak") {
+              rows = [
+                ["q", "w", "f", "p", "g", "j", "l", "u", "y", ";"],
+                ["a", "r", "s", "t", "d", "h", "n", "e", "i", "o"],
+                ["z", "x", "c", "v", "b", "k", "m", ",", ".", "/"]
+              ];
+            } else if (keyboardLayout === "azerty") {
+              rows = [
+                ["a", "z", "e", "r", "t", "y", "u", "i", "o", "p"],
+                ["q", "s", "d", "f", "g", "h", "j", "k", "l", "m"],
+                ["w", "x", "c", "v", "b", "n", ",", ";", ":", "!"]
+              ];
+            } else {
+              // QWERTY
+              rows = [
+                ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+                ["a", "s", "d", "f", "g", "h", "j", "k", "l", ";"],
+                ["z", "x", "c", "v", "b", "n", "m", ",", ".", "/"]
+              ];
+            }
+
+            const expectedChar = currentChunk.text[userInput.length]?.toLowerCase();
+
+            return (
+              <div className="space-y-1.5">
+                {rows.map((row, rowIdx) => (
+                  <div 
+                    key={rowIdx} 
+                    className="flex justify-center gap-1"
+                    style={{ paddingLeft: rowIdx === 1 ? "1rem" : rowIdx === 2 ? "2rem" : "0" }}
+                  >
+                    {row.map((key) => {
+                      const isActive = key === expectedChar;
+                      return (
+                        <div
+                          key={key}
+                          className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg border text-xs font-bold uppercase flex items-center justify-center transition-all ${
+                            isActive 
+                              ? "bg-primary text-primary-foreground border-primary scale-105 shadow-md shadow-primary/20 animate-pulse" 
+                              : "bg-secondary/20 border-border/30 text-muted-foreground/80"
+                          }`}
+                        >
+                          {key}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+                
+                {/* Spacebar */}
+                <div className="flex justify-center pt-1">
+                  <div
+                    className={`w-36 sm:w-48 h-8 rounded-lg border text-[10px] font-bold uppercase flex items-center justify-center transition-all ${
+                      expectedChar === " "
+                        ? "bg-primary text-primary-foreground border-primary scale-105 shadow-md shadow-primary/20"
+                        : "bg-secondary/20 border-border/30 text-muted-foreground/60"
+                    }`}
+                  >
+                    Space
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* 4. KEYBOARD SHORTCUT HELPER */}
       <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/60 font-semibold select-none pt-2">
