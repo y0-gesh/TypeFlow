@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       name: "Settings",
       href: "/dashboard/settings",
       icon: Settings,
-      disabled: true,
+      disabled: false,
     },
   ];
 

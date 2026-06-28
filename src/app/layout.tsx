@@ -1,7 +1,8 @@
 import React from 'react';
-import { Geist, Inter } from "next/font/google";
+import { Geist, Inter, JetBrains_Mono, Fira_Code, Roboto_Mono } from "next/font/google";
 import "@/styles/globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
+import { SettingsProvider } from "@/components/SettingsProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,6 +13,24 @@ const inter = Inter({
     subsets: ["latin"],
     display: "swap",
     variable: "--font-inter",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-jetbrains-mono",
+});
+
+const firaCode = Fira_Code({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-fira-code",
+});
+
+const robotoMono = Roboto_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-roboto-mono",
 });
 
 export const metadata = {
@@ -39,15 +58,17 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${inter.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${inter.variable} ${jetbrainsMono.variable} ${firaCode.variable} ${robotoMono.variable} h-full antialiased dark`}
       suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground antialiased font-inter">
+      <body className="min-h-full flex flex-col bg-background text-foreground antialiased font-mono">
         <AuthProvider>
-          {children}
+          <SettingsProvider>
+            {children}
+          </SettingsProvider>
         </AuthProvider>
       </body>
     </html>

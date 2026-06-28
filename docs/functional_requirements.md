@@ -87,7 +87,7 @@ TypeFlow operates on a strict modular agent architecture defined in [AGENTS.md](
   * Allow backspacing of incorrect characters, but restrict backspacing past the current sentence or chunk boundary.
 * **6.3 Real-Time Metric Evaluators**:
   * Calculate live WPM: $\text{WPM} = \frac{\text{Correct Characters} / 5}{\text{Time in Minutes}}$.
-  * Calculate accuracy: $\text{Accuracy} = \left(\frac{\text{Correct Keys Typed}}{\text{Total Keys Pressed}}\right) \times 100$.
+  * Calculate accuracy: $\text{Accuracy} = \left(\frac{\text{Correct Keys Typed}}{\text{Total Keys Pressed}}\right) \times 100$. 
 * **6.4 Session Controls**:
   * Support Restart (hotkey `Tab`), Pause (when focus is lost), and Resume (on keypress).
   * Sound effects: Keyboard click sound (optional toggle) and error buzz.

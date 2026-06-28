@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Sparkles
 } from "lucide-react";
+import Link from "next/link";
 
 export default function LibraryPage() {
   const {
@@ -259,15 +260,16 @@ export default function LibraryPage() {
                       </Button>
                     </div>
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs font-bold text-primary group-hover:translate-x-1 transition-transform duration-200 flex items-center gap-1.5 cursor-pointer"
-                      disabled
-                    >
-                      Open Library
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
+                    <Link href={`/dashboard/library/${lib.id}`}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs font-bold text-primary group-hover:translate-x-1 transition-transform duration-200 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        Open Library
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </CardContent>

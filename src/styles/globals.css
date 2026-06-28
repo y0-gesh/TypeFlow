@@ -221,6 +221,27 @@ body {
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply font-mono;
   }
+}
+
+/* Font Customization Utility Classes */
+.font-jetbrains-mono {
+  font-family: var(--font-jetbrains-mono), monospace !important;
+}
+
+.font-inter {
+  font-family: var(--font-inter), sans-serif !important;
+}
+
+.font-fira-code {
+  font-family: var(--font-fira-code), monospace !important;
+}
+
+.font-roboto-mono {
+  font-family: var(--font-roboto-mono), monospace !important;
+}
+
+.font-geist-sans {
+  font-family: var(--font-geist-sans), sans-serif !important;
 }
