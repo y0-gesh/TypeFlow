@@ -92,7 +92,7 @@ TypeFlow operates on a strict modular agent architecture defined in [AGENTS.md](
   * Support Restart (hotkey `Tab`), Pause (when focus is lost), and Resume (on keypress).
   * Sound effects: Keyboard click sound (optional toggle) and error buzz.
   * Focus Mode: Hide dashboard panels and metrics while typing to minimize distractions.
-
+ 
 ### Phase 7: Progression & Learning Flow
 * **7.1 Chunk Progression Gate (Lesson Engine Agent)**:
   * Evaluate typing metrics on chunk completion.

@@ -39,6 +39,13 @@ export default function LandingPage() {
   const [demoActive, setDemoActive] = useState<boolean>(false);
   const [demoCategory, setDemoCategory] = useState<CategoryKey>("general");
 
+  // Auto-open typing box modal when content is loaded from library
+  React.useEffect(() => {
+    if (chunks.length > 0) {
+      setDemoActive(true);
+    }
+  }, [chunks]);
+
   const startDemo = (category: CategoryKey = "general") => {
     setDemoCategory(category);
     setRawContent(SAMPLE_TEXTS[category]);
@@ -47,7 +54,15 @@ export default function LandingPage() {
 
   const closeDemo = () => {
     setDemoActive(false);
-    useTypingStore.setState({ chunks: [], userInput: "", startTime: null });
+    useTypingStore.setState({
+      chunks: [],
+      userInput: "",
+      timeElapsed: 0,
+      totalKeysPressed: 0,
+      isPaused: false,
+      lessonStatus: "idle",
+      stats: { wpm: 0, accuracy: 100, correctChars: 0, totalCharsTyped: 0 }
+    });
   };
 
   return (

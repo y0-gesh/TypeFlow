@@ -266,7 +266,7 @@ export default function LibraryPage() {
                         size="sm"
                         className="text-xs font-bold text-primary group-hover:translate-x-1 transition-transform duration-200 flex items-center gap-1.5 cursor-pointer"
                       >
-                        Open Library
+                        Open Chapters
                         <ArrowRight className="h-3.5 w-3.5" />
                       </Button>
                     </Link>

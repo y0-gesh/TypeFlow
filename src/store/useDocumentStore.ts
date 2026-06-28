@@ -185,53 +185,74 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     await updateStatus("Processing");
 
     try {
-      // Stage 3: Split into chunks using contentEngine
-      const chunks = contentEngine.processContent(content);
+      // Stage 3: Split structurally into chapters and lesson chunks
+      const processedChapters = contentEngine.processDocument(content);
 
       if (isMockAuth) {
-        // Save mock lessons in LocalStorage
-        const mockLessons = typeof window !== "undefined" ? JSON.parse(localStorage.getItem(LESSONS_STORAGE_KEY) || "[]") : [];
-        const newLessons = chunks.map((chunk, idx) => ({
-          id: `mock-lesson-${Math.random().toString(36).substring(2, 9)}`,
-          document_id: docId,
-          content: chunk.text,
-          difficulty: chunk.difficulty,
-          sequence_number: idx + 1
-        }));
-        localStorage.setItem(LESSONS_STORAGE_KEY, JSON.stringify([...mockLessons, ...newLessons]));
+        // Save mock chapters and lessons in LocalStorage
+        const mockChapters = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("typeflow_chapters_mock") || "[]") : [];
+        const mockLessons = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("typeflow_lessons_mock") || "[]") : [];
+        
+        const newChapters: any[] = [];
+        const newLessons: any[] = [];
+
+        for (const chap of processedChapters) {
+          const chapId = `mock-chap-${Math.random().toString(36).substring(2, 9)}`;
+          newChapters.push({
+            id: chapId,
+            document_id: docId,
+            title: chap.title,
+            sequence_number: chap.sequence_number
+          });
+
+          chap.lessons.forEach((les) => {
+            newLessons.push({
+              id: `mock-lesson-${Math.random().toString(36).substring(2, 9)}`,
+              chapter_id: chapId,
+              content: les.content,
+              difficulty: les.difficulty,
+              sequence_number: les.sequence_number
+            });
+          });
+        }
+
+        localStorage.setItem("typeflow_chapters_mock", JSON.stringify([...mockChapters, ...newChapters]));
+        localStorage.setItem("typeflow_lessons_mock", JSON.stringify([...mockLessons, ...newLessons]));
       } else {
         const { data: sessionData } = await supabase.auth.getSession();
         const user = sessionData?.session?.user;
         if (!user) throw new Error("Session expired during document processing");
 
-        // Insert a default Chapter
-        const { data: newChapter, error: chapterError } = await supabase
-          .from("chapters")
-          .insert({
-            document_id: docId,
+        // Insert Chapters and their corresponding lessons transactionally (sequentially)
+        for (const chap of processedChapters) {
+          const { data: newChapter, error: chapterError } = await supabase
+            .from("chapters")
+            .insert({
+              document_id: docId,
+              user_id: user.id,
+              title: chap.title,
+              sequence_number: chap.sequence_number
+            })
+            .select()
+            .single();
+
+          if (chapterError) throw chapterError;
+
+          // Insert generated Lessons for this chapter
+          const lessonsData = chap.lessons.map((les) => ({
+            chapter_id: newChapter.id,
             user_id: user.id,
-            title: "Chapter 1",
-            sequence_number: 1
-          })
-          .select()
-          .single();
+            content: les.content,
+            difficulty: les.difficulty,
+            sequence_number: les.sequence_number
+          }));
 
-        if (chapterError) throw chapterError;
+          const { error: lessonsError } = await supabase
+            .from("lessons")
+            .insert(lessonsData);
 
-        // Insert generated Lessons
-        const lessonsData = chunks.map((chunk, idx) => ({
-          chapter_id: newChapter.id,
-          user_id: user.id,
-          content: chunk.text,
-          difficulty: chunk.difficulty,
-          sequence_number: idx + 1
-        }));
-
-        const { error: lessonsError } = await supabase
-          .from("lessons")
-          .insert(lessonsData);
-
-        if (lessonsError) throw lessonsError;
+          if (lessonsError) throw lessonsError;
+        }
       }
 
       // Transition to Completed
