@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       name: "Library",
       href: "/dashboard/library",
       icon: BookOpen,
-      disabled: true,
+      disabled: false,
     },
     {
       name: "Analytics",

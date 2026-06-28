@@ -1,6 +1,8 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
+import { useLibraryStore } from "@/store/useLibraryStore";
 import {
   Card,
   CardHeader,
@@ -9,10 +11,27 @@ import {
   CardContent,
 } from "@/vendors/ui/card";
 import { Button } from "@/vendors/ui/button";
-import { Trophy, Flame, Clock, Zap, UploadCloud, Layers } from "lucide-react";
+import {
+  Trophy,
+  Flame,
+  Clock,
+  Zap,
+  UploadCloud,
+  Layers,
+  Folder,
+  ArrowRight,
+  ChevronRight,
+  Loader2,
+  Star
+} from "lucide-react";
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { libraries, loading, fetchLibraries } = useLibraryStore();
+
+  useEffect(() => {
+    fetchLibraries();
+  }, [fetchLibraries]);
 
   // Hardcoded initial metrics for the dashboard shell
   const stats = [
@@ -77,15 +96,16 @@ export default function DashboardPage() {
             className="pt-2 flex gap-3 flex-wrap animate-fade-in"
             style={{ animationDelay: "0.1s" }}
           >
-            <Button
-              variant="secondary"
-              size="sm"
-              className="bg-white text-indigo-700 hover:bg-neutral-100 font-bold border-none"
-              disabled
-            >
-              <UploadCloud className="mr-2 h-4 w-4" />
-              Upload Document (Soon)
-            </Button>
+            <Link href="/dashboard/library">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-white text-indigo-700 hover:bg-neutral-100 font-bold border-none cursor-pointer"
+              >
+                <UploadCloud className="mr-2 h-4 w-4" />
+                Go to Library
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -120,34 +140,92 @@ export default function DashboardPage() {
       {/* Grid: Actions & Empty State */}
       <div className="grid md:grid-cols-3 gap-6">
         {/* Main callout to start practice */}
-        <Card className="md:col-span-2 shadow-sm border-border/60 hover:shadow-md transition-all duration-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" />
-              Practice Library
-            </CardTitle>
-            <CardDescription>
-              Select a book chapter or script to start practicing typing.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="py-8 flex flex-col items-center justify-center text-center border-2 border-dashed border-border/60 rounded-2xl bg-secondary/10 mx-6 mb-6">
-            <div className="h-14 w-14 rounded-full bg-secondary/60 flex items-center justify-center text-muted-foreground mb-4">
-              <UploadCloud className="h-7 w-7" />
+        <Card className="md:col-span-2 shadow-sm border-border/60 hover:shadow-md transition-all duration-200 flex flex-col">
+          <CardHeader className="flex flex-row justify-between items-start">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-primary" />
+                Practice Library
+              </CardTitle>
+              <CardDescription>
+                Select a book chapter or script to start practicing typing.
+              </CardDescription>
             </div>
-            <h4 className="text-base font-bold mb-1">Your Library is empty</h4>
-            <p className="text-sm text-muted-foreground max-w-sm mb-6">
-              You haven&apos;t uploaded any documents yet. In Phase 3 and 4,
-              you&apos;ll be able to create custom collections and load books,
-              PDFs, and code scripts.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs uppercase tracking-wider font-bold border-dashed"
-              disabled
-            >
-              Configure Library
-            </Button>
+            {libraries.length > 0 && (
+              <Link href="/dashboard/library" className="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
+                View All ({libraries.length})
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            )}
+          </CardHeader>
+
+          <CardContent className="flex-1 flex flex-col justify-center px-6 pb-6">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-sm text-muted-foreground">
+                <Loader2 className="h-8 w-8 text-primary animate-spin mb-2" />
+                Updating library cache...
+              </div>
+            ) : libraries.length === 0 ? (
+              <div className="py-8 flex flex-col items-center justify-center text-center border-2 border-dashed border-border/60 rounded-2xl bg-secondary/10">
+                <div className="h-14 w-14 rounded-full bg-secondary/60 flex items-center justify-center text-muted-foreground mb-4">
+                  <UploadCloud className="h-7 w-7" />
+                </div>
+                <h4 className="text-base font-bold mb-1">Your Library is empty</h4>
+                <p className="text-sm text-muted-foreground max-w-sm mb-6">
+                  You haven&apos;t created any folders or libraries yet.
+                  Get started by creating your first folder collection.
+                </p>
+                <Link href="/dashboard/library">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs uppercase tracking-wider font-bold border-dashed cursor-pointer"
+                  >
+                    Configure Library
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {libraries.slice(0, 3).map((lib) => (
+                  <div
+                    key={lib.id}
+                    className="flex items-center justify-between p-4 bg-secondary/20 hover:bg-secondary/40 border border-border/40 hover:border-primary/20 rounded-xl transition-all group"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="p-2.5 bg-primary/10 text-primary rounded-lg shrink-0">
+                        <Folder className="h-5 w-5 fill-current" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold truncate flex items-center gap-2">
+                          {lib.name}
+                          {lib.is_favorite && (
+                            <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500 shrink-0" />
+                          )}
+                        </h4>
+                        <p className="text-xs text-muted-foreground truncate max-w-xs md:max-w-md">
+                          {lib.description || "No description provided."}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-semibold text-muted-foreground hidden sm:inline">
+                        {lib.document_count || 0} docs
+                      </span>
+                      <Link href="/dashboard/library">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg hover:bg-secondary group-hover:text-primary transition-colors cursor-pointer"
+                        >
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
