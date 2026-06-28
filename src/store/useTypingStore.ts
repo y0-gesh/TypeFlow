@@ -41,6 +41,7 @@ export interface TypingStore {
   isPaused: boolean;
   soundEnabled: boolean;
   focusMode: boolean;
+  lastKeyTime: number | null;
   
   setRawContent: (rawText: string) => void;
   loadChapterLessons: (lessonsList: any[], startIndex: number) => void;
@@ -89,6 +90,7 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
   isPaused: false,
   soundEnabled: true,
   focusMode: false,
+  lastKeyTime: null,
 
   // Actions
   setRawContent: (rawText: string) => {
@@ -101,6 +103,7 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
       totalKeysPressed: 0,
       isPaused: false,
       lessonStatus: "idle",
+      lastKeyTime: null,
       stats: { wpm: 0, accuracy: 100, correctChars: 0, totalCharsTyped: 0 }
     });
   },
@@ -120,6 +123,7 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
       totalKeysPressed: 0,
       isPaused: false,
       lessonStatus: "idle",
+      lastKeyTime: null,
       stats: { wpm: 0, accuracy: 100, correctChars: 0, totalCharsTyped: 0 }
     });
   },
@@ -132,7 +136,8 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
       stats,
       totalKeysPressed,
       soundEnabled,
-      isPaused
+      isPaused,
+      lastKeyTime
     } = get();
     
     const currentChunk = chunks[currentIndex];
@@ -145,6 +150,8 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
     }
 
     let updatedKeysPressed = totalKeysPressed;
+    let lastKeyTimeVal = lastKeyTime;
+    const now = Date.now();
 
     // Detect typed character (exclude backspaces)
     if (input.length > prevInput.length) {
@@ -163,6 +170,33 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
           playErrorSound();
         }
       }
+
+      // Record keyboard/character analytics
+      if (typeof window !== "undefined") {
+        const charKey = expectedChar.toLowerCase();
+        if (charKey && charKey.length === 1) {
+          const rawAnalytics = localStorage.getItem("typeflow_keyboard_analytics");
+          const analytics = rawAnalytics ? JSON.parse(rawAnalytics) : { keyStats: {} };
+
+          if (!analytics.keyStats[charKey]) {
+            analytics.keyStats[charKey] = { pressed: 0, errors: 0, timeMs: 0 };
+          }
+
+          analytics.keyStats[charKey].pressed += 1;
+
+          if (!isCorrect) {
+            analytics.keyStats[charKey].errors += 1;
+          } else if (lastKeyTimeVal !== null) {
+            const diff = now - lastKeyTimeVal;
+            // Only count if transition was reasonable (less than 3 seconds)
+            if (diff < 3000) {
+              analytics.keyStats[charKey].timeMs += diff;
+            }
+          }
+          localStorage.setItem("typeflow_keyboard_analytics", JSON.stringify(analytics));
+        }
+      }
+      lastKeyTimeVal = now;
     }
 
     const comparison = typingEngine.compareInput(currentChunk.text, input);
@@ -173,6 +207,7 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
       userInput: input,
       lessonStatus: newStatus,
       totalKeysPressed: updatedKeysPressed,
+      lastKeyTime: lastKeyTimeVal,
       stats: {
         wpm,
         accuracy,
@@ -381,6 +416,7 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
       totalKeysPressed: 0,
       isPaused: false,
       lessonStatus: "idle",
+      lastKeyTime: null,
       stats: { wpm: 0, accuracy: 100, correctChars: 0, totalCharsTyped: 0 }
     }));
   },
@@ -392,6 +428,7 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
       totalKeysPressed: 0,
       isPaused: false,
       lessonStatus: "idle",
+      lastKeyTime: null,
       stats: { wpm: 0, accuracy: 100, correctChars: 0, totalCharsTyped: 0 }
     });
   },

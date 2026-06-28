@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       name: "Analytics",
       href: "/dashboard/analytics",
       icon: BarChart3,
-      disabled: true,
+      disabled: false,
     },
     {
       name: "Settings",
