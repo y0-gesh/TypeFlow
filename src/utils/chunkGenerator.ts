@@ -1,23 +1,19 @@
 /**
  * Splits text into sentences based on punctuation.
- * @param {string} text 
- * @returns {string[]}
  */
-export function splitSentences(text) {
+export function splitSentences(text: string): string[] {
   // Regex to split on . ! ? but also handle potential abbreviations (basic)
-  return text.split(/(?<=[.!?])\s+/);
+  return text.split(/(?<=[.!?])\s+/).filter(Boolean);
 }
 
 /**
  * Groups sentences into chunks of 80-200 characters.
- * @param {string[]} sentences 
- * @returns {string[]}
  */
-export function createChunks(sentences) {
-  const chunks = [];
+export function createChunks(sentences: string[]): string[] {
+  const chunks: string[] = [];
   let current = "";
 
-  for (let sentence of sentences) {
+  for (const sentence of sentences) {
     if ((current + sentence).length < 180) {
       current += (current ? " " : "") + sentence;
     } else {

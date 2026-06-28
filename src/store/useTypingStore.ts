@@ -1,16 +1,52 @@
 import { create } from "zustand";
-import { contentEngine } from "@/engines/contentEngine";
+import { contentEngine, Chunk } from "@/engines/contentEngine";
 import { typingEngine } from "@/engines/typingEngine";
 
 const STORAGE_KEY = "typeflow_progress";
 
-const loadProgress = () => {
+export interface ProgressHistoryItem {
+  chunkId: string;
+  wpm: number;
+  accuracy: number;
+  date: string;
+}
+
+export interface ProgressState {
+  completedChunks: string[];
+  history: ProgressHistoryItem[];
+}
+
+export interface TypingStats {
+  wpm: number;
+  accuracy: number;
+  correctChars: number;
+  totalCharsTyped: number;
+}
+
+export type LessonStatus = "idle" | "typing" | "completed" | "retry";
+
+export interface TypingStore {
+  chunks: Chunk[];
+  currentIndex: number;
+  userInput: string;
+  startTime: number | null;
+  stats: TypingStats;
+  lessonStatus: LessonStatus;
+  progress: ProgressState;
+  setRawContent: (rawText: string) => void;
+  updateInput: (input: string) => void;
+  completeChunk: () => void;
+  nextChunk: () => void;
+  retryChunk: () => void;
+}
+
+const loadProgress = (): ProgressState => {
   if (typeof window === "undefined") return { completedChunks: [], history: [] };
   const saved = localStorage.getItem(STORAGE_KEY);
   return saved ? JSON.parse(saved) : { completedChunks: [], history: [] };
 };
 
-const saveProgress = (progress) => {
+const saveProgress = (progress: ProgressState): void => {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
 };
@@ -19,7 +55,7 @@ const saveProgress = (progress) => {
  * State Management Agent
  * Centralized state control using Zustand.
  */
-export const useTypingStore = create((set, get) => ({
+export const useTypingStore = create<TypingStore>((set, get) => ({
   // State
   chunks: [],
   currentIndex: 0,
@@ -31,11 +67,11 @@ export const useTypingStore = create((set, get) => ({
     correctChars: 0,
     totalCharsTyped: 0,
   },
-  lessonStatus: "idle", // 'idle', 'typing', 'completed', 'retry'
+  lessonStatus: "idle",
   progress: loadProgress(),
 
   // Actions
-  setRawContent: (rawText) => {
+  setRawContent: (rawText: string) => {
     const processedChunks = contentEngine.processContent(rawText);
     set({ 
       chunks: processedChunks, 
@@ -46,7 +82,7 @@ export const useTypingStore = create((set, get) => ({
     });
   },
 
-  updateInput: (input) => {
+  updateInput: (input: string) => {
     const { chunks, currentIndex, startTime, stats } = get();
     const currentChunk = chunks[currentIndex];
     
@@ -87,9 +123,10 @@ export const useTypingStore = create((set, get) => ({
   completeChunk: () => {
     const { stats, currentIndex, chunks, progress } = get();
     const currentChunk = chunks[currentIndex];
+    if (!currentChunk) return;
     
     if (stats.accuracy >= 90) {
-      const newProgress = {
+      const newProgress: ProgressState = {
         completedChunks: [...progress.completedChunks, currentChunk.id],
         history: [...progress.history, {
           chunkId: currentChunk.id,

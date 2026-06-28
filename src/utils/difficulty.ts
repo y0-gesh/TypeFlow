@@ -1,4 +1,4 @@
-export function getDifficulty(text) {
+export function getDifficulty(text: string): number {
   const lengthScore = text.length / 100;
   const punctuationScore = (text.match(/[.,!?;:]/g) || []).length;
   const capsScore = (text.match(/[A-Z]/g) || []).length;
