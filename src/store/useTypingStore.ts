@@ -3,6 +3,7 @@ import { contentEngine, Chunk } from "@/engines/contentEngine";
 import { typingEngine } from "@/engines/typingEngine";
 import { playClickSound, playErrorSound } from "@/utils/sound";
 import { supabase, isMockAuth } from "@/lib/supabase";
+import { useGamificationStore } from "./useGamificationStore";
 
 const STORAGE_KEY = "typeflow_progress";
 
@@ -376,6 +377,9 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
         set({ lessonStatus: isCompleted ? "completed" : "retry" });
       }
     }
+
+    // Award XP and evaluate milestones
+    useGamificationStore.getState().processSessionStats(wpmVal, accuracyVal, totalChars, timeElapsed);
   },
 
   syncProgress: async () => {

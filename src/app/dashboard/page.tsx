@@ -6,6 +6,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useLibraryStore } from "@/store/useLibraryStore";
 import { useDashboardStore } from "@/store/useDashboardStore";
 import { useDocumentStore } from "@/store/useDocumentStore";
+import { useGamificationStore } from "@/store/useGamificationStore";
 import {
   Card,
   CardHeader,
@@ -27,7 +28,11 @@ import {
   Play,
   Calendar,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Award,
+  ListTodo,
+  CheckCircle2,
+  Users
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -43,11 +48,23 @@ export default function DashboardPage() {
     fetchDashboardData 
   } = useDashboardStore();
   const { resumeLibraryPractice } = useDocumentStore();
+  
+  const { 
+    totalXp, 
+    level, 
+    xpIntoLevel, 
+    xpRequiredForNext, 
+    badges, 
+    challenges, 
+    leaderboard, 
+    fetchGamificationData 
+  } = useGamificationStore();
 
   useEffect(() => {
     fetchLibraries();
     fetchDashboardData();
-  }, [fetchLibraries, fetchDashboardData]);
+    fetchGamificationData();
+  }, [fetchLibraries, fetchDashboardData, fetchGamificationData]);
 
   const username =
     user?.user_metadata?.username || user?.email?.split("@")[0] || "User";
@@ -95,6 +112,16 @@ export default function DashboardPage() {
     await resumeLibraryPractice(libId, router);
   };
 
+  const getBadgeIcon = (iconName: string) => {
+    switch (iconName) {
+      case "first_words": return Trophy;
+      case "streak_master": return Flame;
+      case "perfect_accuracy": return Sparkles;
+      case "century_club": return Zap;
+      default: return Award;
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-in">
       
@@ -115,11 +142,36 @@ export default function DashboardPage() {
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight animate-fade-in">
             Welcome to TypeFlow, {username}!
           </h2>
-          <p className="text-blue-100 text-base leading-relaxed animate-fade-in">
+          <p className="text-blue-100 text-sm leading-relaxed max-w-xl animate-fade-in">
             Ready to train your typing muscle memory today? Upload an article,
             book chapter, or programming script, and turn passive reading into
             active skill building.
           </p>
+
+          {/* Level Progress Indicator inside Welcome Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-2 border-t border-white/10 mt-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <span className="text-xs uppercase font-black bg-white/20 px-3 py-1 rounded-full border border-white/10 text-white shadow-xs">
+                Level {level}
+              </span>
+              <span className="text-xs text-blue-100 font-bold">
+                {totalXp} Total XP
+              </span>
+            </div>
+            
+            <div className="flex-1 max-w-sm space-y-1.5">
+              <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden border border-white/5 shadow-inner">
+                <div 
+                  className="bg-white h-full rounded-full transition-all duration-300 shadow-md"
+                  style={{ width: `${Math.round((xpIntoLevel / xpRequiredForNext) * 100)}%` }}
+                />
+              </div>
+              <div className="text-[10px] text-blue-100 font-semibold text-right">
+                {xpIntoLevel} / {xpRequiredForNext} XP to Level {level + 1}
+              </div>
+            </div>
+          </div>
+
           <div className="pt-2 flex gap-3 flex-wrap animate-fade-in">
             <Link href="/dashboard/library">
               <Button
@@ -239,7 +291,55 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Widget 2: Practice Library Folders List */}
+          {/* Widget 2: Achievements & Badges Grid */}
+          <Card className="shadow-xs border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" />
+                Achievements & Badges
+              </CardTitle>
+              <CardDescription>
+                Earn badges and medals by hitting consistency milestones and speed records.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {badges.map((badge) => {
+                  const Icon = getBadgeIcon(badge.iconName);
+                  return (
+                    <div 
+                      key={badge.id}
+                      className={`
+                        flex items-start gap-4 p-4 border rounded-2xl transition-all duration-300
+                        ${
+                          badge.unlocked 
+                            ? "bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400" 
+                            : "bg-secondary/5 border-border/20 opacity-45 grayscale"
+                        }
+                      `}
+                    >
+                      <div className={`p-2.5 rounded-xl shrink-0 ${badge.unlocked ? "bg-amber-500/15 border border-amber-500/25" : "bg-secondary border border-border"}`}>
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <h5 className="text-sm font-bold truncate flex items-center gap-1.5">
+                          {badge.name}
+                          {badge.unlocked && (
+                            <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+                          )}
+                        </h5>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
+                          {badge.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Widget 3: Practice Library Folders List */}
           <Card className="shadow-xs border-border/60 hover:shadow-md transition-all duration-200">
             <CardHeader className="flex flex-row justify-between items-start pb-3">
               <div>
@@ -309,7 +409,7 @@ export default function DashboardPage() {
         {/* Right columns (Col span 1) */}
         <div className="space-y-6">
           
-          {/* Widget 3: Daily training goal tracker */}
+          {/* Widget 4: Daily training goal tracker */}
           <Card className="shadow-xs border-border/60 hover:shadow-md transition-all duration-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold flex items-center gap-2">
@@ -337,7 +437,58 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Widget 4: Weekly calendar activity streak */}
+          {/* Widget 5: Daily Challenges checklist */}
+          <Card className="shadow-xs border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <ListTodo className="h-5 w-5 text-primary" />
+                Daily Quests
+              </CardTitle>
+              <CardDescription>
+                Complete quests to unlock quick experience point boosts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-6 space-y-4">
+              {challenges.map((chal) => (
+                <div 
+                  key={chal.id}
+                  className={`
+                    p-3.5 border rounded-2xl flex items-start justify-between gap-3 transition-all duration-200
+                    ${
+                      chal.completed 
+                        ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400" 
+                        : "bg-secondary/10 border-border/30"
+                    }
+                  `}
+                >
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <h5 className="text-xs font-bold leading-normal truncate">{chal.title}</h5>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-semibold">
+                      <span>Progress:</span>
+                      <span>
+                        {chal.type === "wpm" ? `${chal.currentValue}/${chal.targetValue} WPM` :
+                         chal.type === "accuracy" ? `${chal.currentValue}% / ${chal.targetValue}%` :
+                         `${chal.currentValue}/${chal.targetValue} chars`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <span className="text-[10px] font-black uppercase bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded">
+                      +{chal.xpReward} XP
+                    </span>
+                    {chal.completed ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                    ) : (
+                      <div className="h-4 w-4 rounded-full border border-border shrink-0" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Widget 6: Weekly calendar activity streak */}
           <Card className="shadow-xs border-border/60 hover:shadow-md transition-all duration-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold flex items-center gap-2">
@@ -349,7 +500,6 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pb-6">
-              {/* Streak status block */}
               <div className="flex items-center gap-3 p-4 bg-orange-500/5 border border-orange-500/10 rounded-2xl">
                 <div className="p-2 bg-orange-500/15 text-orange-500 rounded-xl">
                   <Flame className="h-6 w-6 fill-current" />
@@ -391,6 +541,52 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Widget 7: Leaderboard competitive rankings */}
+          <Card className="shadow-xs border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Top Typists Leaderboard
+              </CardTitle>
+              <CardDescription>
+                Opt-in global competitive ranks this week.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-6">
+              <div className="space-y-2.5">
+                {leaderboard.map((entry) => (
+                  <div 
+                    key={entry.username}
+                    className={`
+                      flex items-center justify-between p-3 border rounded-xl gap-3
+                      ${
+                        entry.isCurrentUser 
+                          ? "bg-primary/5 border-primary/30 ring-1 ring-primary/20 font-bold" 
+                          : "bg-secondary/15 border-border/20"
+                      }
+                    `}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={`w-5 font-mono text-xs font-bold text-center shrink-0 ${entry.rank === 1 ? "text-yellow-500" : entry.rank === 2 ? "text-zinc-400" : entry.rank === 3 ? "text-amber-600" : "text-muted-foreground/60"}`}>
+                        #{entry.rank}
+                      </span>
+                      <span className="text-xs truncate">{entry.username}</span>
+                      <span className="text-[9px] font-black uppercase bg-secondary/80 px-2 py-0.5 rounded border border-border/40 text-muted-foreground shrink-0">
+                        Lvl {entry.level}
+                      </span>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-black text-foreground/95">
+                        {entry.wpm} WPM
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
