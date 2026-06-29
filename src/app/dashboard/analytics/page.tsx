@@ -318,8 +318,9 @@ export default function AnalyticsPage() {
                           r="3.5"
                           fill="rgb(59, 130, 246)"
                           className="hover:r-5 cursor-pointer transition-all"
-                          title={`Session ${idx + 1}: ${pt} WPM`}
-                        />
+                        >
+                          <title>{`Session ${idx + 1}: ${pt} WPM`}</title>
+                        </circle>
                       );
                     })}
                   </svg>
@@ -380,8 +381,9 @@ export default function AnalyticsPage() {
                           r="3.5"
                           fill="rgb(16, 185, 129)"
                           className="hover:r-5 cursor-pointer transition-all"
-                          title={`Session ${idx + 1}: ${pt}%`}
-                        />
+                        >
+                          <title>{`Session ${idx + 1}: ${pt}%`}</title>
+                        </circle>
                       );
                     })}
                   </svg>
