@@ -1,8 +1,10 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { useAiStore } from "@/store/useAiStore";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/vendors/ui/card";
 import { Button } from "@/vendors/ui/button";
+import { Input } from "@/vendors/ui/input";
 import { 
   Type, 
   Sparkles, 
@@ -11,7 +13,10 @@ import {
   Palette, 
   Keyboard, 
   EyeOff, 
-  LucideTextCursor
+  LucideTextCursor,
+  Brain,
+  Key,
+  Flame
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -22,13 +27,25 @@ export default function SettingsPage() {
     caretStyle, 
     keyboardLayout, 
     zenMode, 
+    adaptiveMode,
     setFontFamily, 
     setFontSize, 
     setTheme, 
     setCaretStyle, 
     setKeyboardLayout, 
-    setZenMode 
+    setZenMode,
+    setAdaptiveMode
   } = useSettingsStore();
+
+  const { apiKey, setApiKey } = useAiStore();
+  const [localKey, setLocalKey] = useState(apiKey);
+  const [keySaved, setKeySaved] = useState(false);
+
+  const handleSaveKey = () => {
+    setApiKey(localKey);
+    setKeySaved(true);
+    setTimeout(() => setKeySaved(false), 2000);
+  };
 
   const fontOptions = [
     {
@@ -342,6 +359,80 @@ export default function SettingsPage() {
                   <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 ${zenMode ? "translate-x-5" : "translate-x-0"}`} />
                 </div>
               </button>
+            </CardContent>
+          </Card>
+
+          {/* Adaptive Practice Toggle */}
+          <Card className="shadow-xs border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-bold">
+                <Flame className="h-4.5 w-4.5 text-primary" />
+                Adaptive Practice
+              </CardTitle>
+              <CardDescription>
+                Dynamically adjust text chunk sizes based on performance.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-6">
+              <button
+                onClick={() => setAdaptiveMode(!adaptiveMode)}
+                className={`
+                  w-full flex items-center justify-between p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer
+                  ${
+                    adaptiveMode
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border/60 hover:bg-secondary/40"
+                  }
+                `}
+              >
+                <div>
+                  <h5 className="text-xs font-bold">Adaptive Chunking</h5>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 max-w-[200px] leading-normal">
+                    Automatically shortens text chunks when accuracy drops below 93%, and increases complexity when accuracy reaches 98%.
+                  </p>
+                </div>
+                <div className={`w-11 h-6 rounded-full transition-colors flex items-center p-0.5 cursor-pointer ${adaptiveMode ? "bg-primary" : "bg-secondary"}`}>
+                  <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 ${adaptiveMode ? "translate-x-5" : "translate-x-0"}`} />
+                </div>
+              </button>
+            </CardContent>
+          </Card>
+
+          {/* AI Credentials Configuration */}
+          <Card className="shadow-xs border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-bold">
+                <Brain className="h-4.5 w-4.5 text-primary" />
+                AI Assistant Config
+              </CardTitle>
+              <CardDescription>
+                Configure credentials to enable direct Gemini API features.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 pb-6">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                  <Key className="h-3 w-3" />
+                  Gemini API Key
+                </label>
+                <Input
+                  type="password"
+                  value={localKey}
+                  onChange={(e) => setLocalKey(e.target.value)}
+                  placeholder="Enter AI API Key..."
+                  className="rounded-xl text-xs"
+                />
+              </div>
+              <Button
+                onClick={handleSaveKey}
+                className="w-full text-xs font-bold rounded-xl cursor-pointer"
+                variant={keySaved ? "secondary" : "default"}
+              >
+                {keySaved ? "API Key Saved!" : "Save Credentials"}
+              </Button>
+              <div className="p-3 bg-secondary/15 rounded-xl border border-border/20 text-[9px] text-muted-foreground leading-normal">
+                If no API key is specified, TypeFlow runs in **Sandbox Demo Mode** utilizing local structured templates for generator actions.
+              </div>
             </CardContent>
           </Card>
 

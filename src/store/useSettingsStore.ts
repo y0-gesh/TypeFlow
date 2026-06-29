@@ -7,12 +7,14 @@ interface SettingsState {
   caretStyle: string;
   keyboardLayout: string;
   zenMode: boolean;
+  adaptiveMode: boolean;
   setFontFamily: (font: string) => void;
   setFontSize: (size: number) => void;
   setTheme: (theme: string) => void;
   setCaretStyle: (style: string) => void;
   setKeyboardLayout: (layout: string) => void;
   setZenMode: (enabled: boolean) => void;
+  setAdaptiveMode: (enabled: boolean) => void;
 }
 
 const STORAGE_KEY = "typeflow_settings";
@@ -24,7 +26,8 @@ const loadSettings = () => {
     theme: "dark",
     caretStyle: "line",
     keyboardLayout: "qwerty",
-    zenMode: false
+    zenMode: false,
+    adaptiveMode: false
   };
 
   if (typeof window === "undefined") {
@@ -40,7 +43,8 @@ const loadSettings = () => {
         theme: parsed.theme || defaults.theme,
         caretStyle: parsed.caretStyle || defaults.caretStyle,
         keyboardLayout: parsed.keyboardLayout || defaults.keyboardLayout,
-        zenMode: parsed.zenMode !== undefined ? parsed.zenMode : defaults.zenMode
+        zenMode: parsed.zenMode !== undefined ? parsed.zenMode : defaults.zenMode,
+        adaptiveMode: parsed.adaptiveMode !== undefined ? parsed.adaptiveMode : defaults.adaptiveMode
       };
     } catch (e) {
       console.error("Failed to parse settings", e);
@@ -80,6 +84,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setZenMode: (zenMode) => {
     set({ zenMode });
     saveToStorage(get());
+  },
+
+  setAdaptiveMode: (adaptiveMode) => {
+    set({ adaptiveMode });
+    saveToStorage(get());
   }
 }));
 
@@ -93,7 +102,8 @@ const saveToStorage = (state: SettingsState) => {
         theme: state.theme,
         caretStyle: state.caretStyle,
         keyboardLayout: state.keyboardLayout,
-        zenMode: state.zenMode
+        zenMode: state.zenMode,
+        adaptiveMode: state.adaptiveMode
       })
     );
   }

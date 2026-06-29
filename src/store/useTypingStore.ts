@@ -4,6 +4,7 @@ import { typingEngine } from "@/engines/typingEngine";
 import { playClickSound, playErrorSound } from "@/utils/sound";
 import { supabase, isMockAuth } from "@/lib/supabase";
 import { useGamificationStore } from "./useGamificationStore";
+import { useSettingsStore } from "./useSettingsStore";
 
 const STORAGE_KEY = "typeflow_progress";
 
@@ -95,7 +96,37 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
 
   // Actions
   setRawContent: (rawText: string) => {
-    const processedChunks = contentEngine.processContent(rawText);
+    let processedChunks = contentEngine.processContent(rawText);
+    const { adaptiveMode } = useSettingsStore.getState();
+
+    if (adaptiveMode) {
+      const history = get().progress.history;
+      let averageAccuracy = 100;
+      if (history.length > 0) {
+        const recent = history.slice(-3);
+        averageAccuracy = recent.reduce((sum, h) => sum + h.accuracy, 0) / recent.length;
+      }
+      
+      if (averageAccuracy < 93) {
+        processedChunks = processedChunks.map((chunk) => {
+          const sentences = chunk.text.split(/(?<=[.!?])\s+/);
+          const firstSentence = sentences[0] || chunk.text;
+          return { ...chunk, text: firstSentence.substring(0, 80) };
+        });
+      } else if (averageAccuracy >= 98) {
+        processedChunks = processedChunks.map((chunk) => {
+          const words = chunk.text.split(" ");
+          const adjustedWords = words.map((w, idx) => {
+            if (idx > 0 && idx % 4 === 0 && !w.endsWith(".") && !w.endsWith(",")) {
+              return w + ";";
+            }
+            return w;
+          });
+          return { ...chunk, text: adjustedWords.join(" ") };
+        });
+      }
+    }
+
     set({
       chunks: processedChunks,
       currentIndex: 0,
@@ -110,11 +141,41 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
   },
 
   loadChapterLessons: (lessonsList: any[], startIndex: number) => {
-    const mappedChunks = lessonsList.map((les) => ({
+    let mappedChunks = lessonsList.map((les) => ({
       id: les.id,
       text: les.content,
       difficulty: les.difficulty || 3
     }));
+
+    const { adaptiveMode } = useSettingsStore.getState();
+
+    if (adaptiveMode) {
+      const history = get().progress.history;
+      let averageAccuracy = 100;
+      if (history.length > 0) {
+        const recent = history.slice(-3);
+        averageAccuracy = recent.reduce((sum, h) => sum + h.accuracy, 0) / recent.length;
+      }
+      
+      if (averageAccuracy < 93) {
+        mappedChunks = mappedChunks.map((chunk) => {
+          const sentences = chunk.text.split(/(?<=[.!?])\s+/);
+          const firstSentence = sentences[0] || chunk.text;
+          return { ...chunk, text: firstSentence.substring(0, 80) };
+        });
+      } else if (averageAccuracy >= 98) {
+        mappedChunks = mappedChunks.map((chunk) => {
+          const words = chunk.text.split(" ");
+          const adjustedWords = words.map((w, idx) => {
+            if (idx > 0 && idx % 4 === 0 && !w.endsWith(".") && !w.endsWith(",")) {
+              return w + ";";
+            }
+            return w;
+          });
+          return { ...chunk, text: adjustedWords.join(" ") };
+        });
+      }
+    }
 
     set({
       chunks: mappedChunks,

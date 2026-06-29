@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLibraryStore } from "@/store/useLibraryStore";
 import { useDocumentStore, Document, Chapter, Lesson } from "@/store/useDocumentStore";
 import { useTypingStore } from "@/store/useTypingStore";
+import { useAiStore } from "@/store/useAiStore";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/vendors/ui/card";
 import { Button } from "@/vendors/ui/button";
 import { Input } from "@/vendors/ui/input";
@@ -19,7 +20,12 @@ import {
   AlertTriangle,
   FolderOpen,
   ArrowRight,
-  Layers
+  Layers,
+  Brain,
+  Sparkles,
+  Info,
+  Award,
+  BookOpen
 } from "lucide-react";
 
 interface PageProps {
@@ -54,7 +60,7 @@ export default function LibraryDetailsPage({ params }: PageProps) {
   }, []);
 
   // Uploader tabs & form state
-  const [activeTab, setActiveTab] = useState<"upload" | "paste">("upload");
+  const [activeTab, setActiveTab] = useState<"upload" | "paste" | "ai">("upload");
   const [dragActive, setDragActive] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
   
@@ -62,12 +68,47 @@ export default function LibraryDetailsPage({ params }: PageProps) {
   const [pasteTitle, setPasteTitle] = useState("");
   const [pasteContent, setPasteContent] = useState("");
 
+  // AI generator form & explain states
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [explainingDoc, setExplainingDoc] = useState<Document | null>(null);
+  const [explanationText, setExplanationText] = useState("");
+  const { apiKey, loading: aiLoading, generateLesson, explainText, generateVocabularyLesson } = useAiStore();
+
   useEffect(() => {
     fetchLibraries();
     fetchChaptersAndLessons(libraryId);
   }, [libraryId, fetchLibraries, fetchChaptersAndLessons]);
 
   const library = libraries.find((l) => l.id === libraryId);
+
+  const handleExplainDoc = async (doc: Document) => {
+    setExplainingDoc(doc);
+    setExplanationText("AI is reading and explaining the document contents...");
+    const explanation = await explainText(doc.content);
+    setExplanationText(explanation);
+  };
+
+  const handleAiGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiPrompt.trim()) return;
+    
+    setUploadLoading(true);
+    const success = await generateLesson(aiPrompt, libraryId);
+    setUploadLoading(false);
+    if (success) {
+      setAiPrompt("");
+      fetchChaptersAndLessons(libraryId);
+    }
+  };
+
+  const handleAiVocab = async () => {
+    setUploadLoading(true);
+    const success = await generateVocabularyLesson(libraryId);
+    setUploadLoading(false);
+    if (success) {
+      fetchChaptersAndLessons(libraryId);
+    }
+  };
 
   // File drag & drop handlers
   const handleDrag = (e: React.DragEvent) => {
@@ -313,6 +354,17 @@ export default function LibraryDetailsPage({ params }: PageProps) {
                                 Resume
                               </Button>
                             )}
+                            {doc.status === "Completed" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleExplainDoc(doc)}
+                                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-pointer"
+                                title="Explain with AI"
+                              >
+                                <Brain className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -399,7 +451,7 @@ export default function LibraryDetailsPage({ params }: PageProps) {
               <div className="flex bg-secondary/50 p-1 rounded-xl mt-4">
                 <button
                   onClick={() => setActiveTab("upload")}
-                  className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer ${
+                  className={`flex-1 text-[11px] font-bold py-2 rounded-lg transition-colors cursor-pointer ${
                     activeTab === "upload"
                       ? "bg-background text-foreground shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
@@ -409,7 +461,7 @@ export default function LibraryDetailsPage({ params }: PageProps) {
                 </button>
                 <button
                   onClick={() => setActiveTab("paste")}
-                  className={`flex-1 text-xs font-bold py-2 rounded-lg transition-colors cursor-pointer ${
+                  className={`flex-1 text-[11px] font-bold py-2 rounded-lg transition-colors cursor-pointer ${
                     activeTab === "paste"
                       ? "bg-background text-foreground shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
@@ -417,10 +469,20 @@ export default function LibraryDetailsPage({ params }: PageProps) {
                 >
                   Paste Text
                 </button>
+                <button
+                  onClick={() => setActiveTab("ai")}
+                  className={`flex-1 text-[11px] font-bold py-2 rounded-lg transition-colors cursor-pointer ${
+                    activeTab === "ai"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  AI Generator
+                </button>
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              {activeTab === "upload" ? (
+              {activeTab === "upload" && (
                 /* FILE UPLOAD DRAG/DROP */
                 <div className="space-y-4">
                   <div
@@ -469,7 +531,9 @@ export default function LibraryDetailsPage({ params }: PageProps) {
                     <strong>Note:</strong> Prose layout files will automatically split into ~150 character chunks for optimal typing practice.
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {activeTab === "paste" && (
                 /* PASTE RAW TEXT FORM */
                 <form onSubmit={handlePasteSubmit} className="space-y-4">
                   <div className="space-y-1.5">
@@ -517,10 +581,133 @@ export default function LibraryDetailsPage({ params }: PageProps) {
                   </Button>
                 </form>
               )}
+
+              {activeTab === "ai" && (
+                /* AI GENERATOR FORM */
+                <div className="space-y-5 animate-fade-in">
+                  {!apiKey.trim() && (
+                    <div className="p-3.5 bg-yellow-500/5 border border-yellow-500/20 text-xs text-yellow-700 dark:text-yellow-400 rounded-2xl flex items-start gap-2.5">
+                      <Info className="h-4.5 w-4.5 shrink-0 text-yellow-500 stroke-[2.5]" />
+                      <div>
+                        <strong>Demo Mode active:</strong> Provide a Gemini API key in settings to enable full-text LLM generation. Custom local templates will be used for testing.
+                      </div>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleAiGenerate} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                        <Brain className="h-3 w-3" />
+                        AI Lesson prompt
+                      </label>
+                      <textarea
+                        required
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        placeholder="e.g. Create a lesson containing commonly confused programming syntax in TypeScript..."
+                        className="w-full min-h-[100px] p-3 text-xs bg-background border border-border/60 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        disabled={uploadLoading}
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full rounded-xl font-bold gap-1.5 flex items-center justify-center cursor-pointer"
+                      disabled={uploadLoading || !aiPrompt.trim()}
+                    >
+                      {uploadLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          Generate Lesson
+                          <Sparkles className="h-4 w-4 text-amber-500 fill-amber-500/20" />
+                        </>
+                      )}
+                    </Button>
+                  </form>
+
+                  <div className="border-t border-border/40 pt-4 space-y-3">
+                    <h5 className="text-[10px] uppercase font-black text-muted-foreground/80 tracking-widest flex items-center gap-1.5">
+                      <Award className="h-3.5 w-3.5" />
+                      AI Vocabulary Trainer
+                    </h5>
+                    <p className="text-[10px] text-muted-foreground leading-normal">
+                      Analyze keycap speed & accuracy metrics to automatically generate focused drills matching your weakest characters.
+                    </p>
+                    <Button
+                      onClick={handleAiVocab}
+                      variant="outline"
+                      className="w-full text-xs font-bold rounded-xl gap-1.5 border-border hover:bg-secondary/40 cursor-pointer"
+                      disabled={uploadLoading}
+                    >
+                      Generate Weak-Key Vocab Drill
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* AI Explanation Sidebar Overlay */}
+      {explainingDoc && (
+        <div className="fixed inset-0 bg-background/85 backdrop-blur-sm z-50 flex justify-end animate-fade-in">
+          <div className="bg-card border-l border-border/60 w-full max-w-md h-full shadow-2xl p-8 flex flex-col justify-between animate-slide-in">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-border/40 pb-4">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-5.5 w-5.5 text-primary" />
+                  <h3 className="text-lg font-black tracking-tight">AI Document Insight</h3>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setExplainingDoc(null)}
+                  className="h-8 w-8 rounded-lg hover:bg-secondary cursor-pointer text-muted-foreground"
+                >
+                  ✕
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[9px] uppercase font-black tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
+                  Explaining Document
+                </span>
+                <h4 className="text-base font-bold text-foreground/90">{explainingDoc.title}</h4>
+              </div>
+
+              <div className="p-5 bg-secondary/10 border border-border/30 rounded-2xl space-y-4">
+                <p className="text-xs text-muted-foreground leading-relaxed italic">
+                  &ldquo;{explainingDoc.content.substring(0, 180)}...&rdquo;
+                </p>
+                <div className="h-[1px] bg-border/40" />
+                <div className="space-y-2">
+                  <span className="text-[9px] uppercase font-black tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    AI Summary & Explanation
+                  </span>
+                  {aiLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono py-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      Analyzing with AI...
+                    </div>
+                  ) : (
+                    <p className="text-xs text-foreground/90 leading-relaxed pt-1 whitespace-pre-line font-medium">
+                      {explanationText}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => setExplainingDoc(null)}
+              className="w-full h-11 rounded-xl font-bold cursor-pointer"
+            >
+              Close Insight
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
