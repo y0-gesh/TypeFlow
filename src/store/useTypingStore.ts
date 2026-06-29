@@ -36,6 +36,9 @@ export interface TypingStore {
   stats: TypingStats;
   lessonStatus: LessonStatus;
   progress: ProgressState;
+  activeChapterId: string | null;
+  activeDocumentId: string | null;
+  activeLibraryId: string | null;
   
   // Phase 6 Additions
   timeElapsed: number;
@@ -46,7 +49,7 @@ export interface TypingStore {
   lastKeyTime: number | null;
   
   setRawContent: (rawText: string) => void;
-  loadChapterLessons: (lessonsList: any[], startIndex: number) => void;
+  loadChapterLessons: (lessonsList: any[], startIndex: number, chapterId?: string) => void;
   updateInput: (input: string) => void;
   completeChunk: () => void;
   syncProgress: () => Promise<void>;
@@ -85,6 +88,9 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
   },
   lessonStatus: "idle",
   progress: loadProgress(),
+  activeChapterId: null,
+  activeDocumentId: null,
+  activeLibraryId: null,
 
   // Phase 6 State Default Values
   timeElapsed: 0,
@@ -136,11 +142,14 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
       isPaused: false,
       lessonStatus: "idle",
       lastKeyTime: null,
-      stats: { wpm: 0, accuracy: 100, correctChars: 0, totalCharsTyped: 0 }
+      stats: { wpm: 0, accuracy: 100, correctChars: 0, totalCharsTyped: 0 },
+      activeChapterId: null,
+      activeDocumentId: null,
+      activeLibraryId: null,
     });
   },
 
-  loadChapterLessons: (lessonsList: any[], startIndex: number) => {
+  loadChapterLessons: (lessonsList: any[], startIndex: number, chapterId?: string) => {
     let mappedChunks = lessonsList.map((les) => ({
       id: les.id,
       text: les.content,
@@ -177,6 +186,27 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
       }
     }
 
+    let activeChapterId = chapterId || null;
+    let activeDocumentId: string | null = null;
+    let activeLibraryId: string | null = null;
+
+    if (activeChapterId) {
+      try {
+        const { useDocumentStore } = require("./useDocumentStore");
+        const docStore = useDocumentStore.getState();
+        const chapter = docStore.chapters.find((c: any) => c.id === activeChapterId);
+        if (chapter) {
+          activeDocumentId = chapter.document_id;
+          const doc = docStore.documents.find((d: any) => d.id === activeDocumentId);
+          if (doc) {
+            activeLibraryId = doc.library_id;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not load document metadata for practice breadcrumbs:", e);
+      }
+    }
+
     set({
       chunks: mappedChunks,
       currentIndex: startIndex,
@@ -186,7 +216,10 @@ export const useTypingStore = create<TypingStore>((set, get) => ({
       isPaused: false,
       lessonStatus: "idle",
       lastKeyTime: null,
-      stats: { wpm: 0, accuracy: 100, correctChars: 0, totalCharsTyped: 0 }
+      stats: { wpm: 0, accuracy: 100, correctChars: 0, totalCharsTyped: 0 },
+      activeChapterId,
+      activeDocumentId,
+      activeLibraryId,
     });
   },
 

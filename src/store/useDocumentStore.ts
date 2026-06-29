@@ -224,8 +224,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       const startIndex = targetChapterLessons.findIndex(l => l.id === targetLesson!.id);
       
       // Load lessons and start practicing at the specified lesson chunk index
-      useTypingStore.getState().loadChapterLessons(targetChapterLessons, startIndex);
-      router.push("/");
+      useTypingStore.getState().loadChapterLessons(targetChapterLessons, startIndex, targetLesson.chapter_id);
+      router.push("/dashboard/practice");
       return true;
     }
 

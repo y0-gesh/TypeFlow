@@ -28,6 +28,70 @@ import {
   BookOpen
 } from "lucide-react";
 
+// PDF.js and Mammoth dynamic CDN loader helpers
+const loadPdfJs = (): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") {
+      reject(new Error("Cannot load PDF.js server-side"));
+      return;
+    }
+    if ((window as any).pdfjsLib) {
+      resolve((window as any).pdfjsLib);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js";
+    script.onload = () => {
+      const pdfjsLib = (window as any).pdfjsLib;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+      resolve(pdfjsLib);
+    };
+    script.onerror = () => reject(new Error("Failed to load PDF.js script"));
+    document.body.appendChild(script);
+  });
+};
+
+const extractTextFromPdf = async (file: File): Promise<string> => {
+  const pdfjsLib = await loadPdfJs();
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = "";
+  
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map((item: any) => item.str).join(" ");
+    fullText += pageText + "\n";
+  }
+  
+  return fullText;
+};
+
+const loadMammoth = (): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") {
+      reject(new Error("Cannot load Mammoth server-side"));
+      return;
+    }
+    if ((window as any).mammoth) {
+      resolve((window as any).mammoth);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js";
+    script.onload = () => resolve((window as any).mammoth);
+    script.onerror = () => reject(new Error("Failed to load Mammoth script"));
+    document.body.appendChild(script);
+  });
+};
+
+const extractTextFromDocx = async (file: File): Promise<string> => {
+  const mammoth = await loadMammoth();
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value;
+};
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -151,21 +215,22 @@ export default function LibraryDetailsPage({ params }: PageProps) {
       let content = "";
       if (fileExt === ".txt" || fileExt === ".md") {
         content = await file.text();
-      } else {
-        // PDF/Docx Mock Content generation for client-side practice
-        content = `Document: ${file.name.replace(fileExt, "")}\n\nThis is a processed lesson text block representing the contents of your uploaded ${fileExt.toUpperCase()} file.\n\nLearning to type on meaningful content builds muscle memory faster. Standard QWERTY keyboards require brackets, semicolons, and operators for code layouts, while prose text trains rhythm, vocabulary, and punctuation layouts. Try practicing this document to test accuracy and speed metrics in real-time.`;
+      } else if (fileExt === ".pdf") {
+        content = await extractTextFromPdf(file);
+      } else if (fileExt === ".docx") {
+        content = await extractTextFromDocx(file);
       }
 
       if (!content.trim()) {
-        alert("The uploaded file is empty.");
+        alert("Could not extract any text from the uploaded file.");
         return;
       }
 
       const title = file.name.replace(fileExt, "");
       await uploadDocument(libraryId, title, content, file);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to read file.");
+      alert(`Failed to read file: ${err.message || err}`);
     } finally {
       setUploadLoading(false);
     }
@@ -173,16 +238,18 @@ export default function LibraryDetailsPage({ params }: PageProps) {
 
   const handlePasteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pasteTitle.trim() || !pasteContent.trim()) return;
+    if (!pasteContent.trim()) return;
 
     if (pasteContent.length > 100000) {
       alert("Text exceeds the 100,000 character limit.");
       return;
     }
 
+    const title = pasteTitle.trim() || `Pasted Text - ${new Date().toLocaleDateString()}`;
+
     setUploadLoading(true);
     try {
-      const success = await uploadDocument(libraryId, pasteTitle.trim(), pasteContent.trim());
+      const success = await uploadDocument(libraryId, title, pasteContent.trim());
       if (success) {
         setPasteTitle("");
         setPasteContent("");
@@ -211,8 +278,8 @@ export default function LibraryDetailsPage({ params }: PageProps) {
       }
     }
 
-    loadChapterLessons(chapLessons, startIndex);
-    router.push("/");
+    loadChapterLessons(chapLessons, startIndex, chapterId);
+    router.push("/dashboard/practice");
   };
 
   const handlePracticeDocument = (docId: string) => {
@@ -538,10 +605,9 @@ export default function LibraryDetailsPage({ params }: PageProps) {
                 <form onSubmit={handlePasteSubmit} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                      Document Title
+                      Document Title (Optional)
                     </label>
                     <Input
-                      required
                       value={pasteTitle}
                       onChange={(e) => setPasteTitle(e.target.value)}
                       placeholder="e.g. JavaScript Closures"
@@ -568,7 +634,7 @@ export default function LibraryDetailsPage({ params }: PageProps) {
                   <Button
                     type="submit"
                     className="w-full rounded-xl font-bold gap-1.5 flex items-center justify-center cursor-pointer"
-                    disabled={uploadLoading || !pasteTitle.trim() || !pasteContent.trim()}
+                    disabled={uploadLoading || !pasteContent.trim()}
                   >
                     {uploadLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

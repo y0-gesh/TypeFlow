@@ -39,12 +39,7 @@ export default function LandingPage() {
   const [demoActive, setDemoActive] = useState<boolean>(false);
   const [demoCategory, setDemoCategory] = useState<CategoryKey>("general");
 
-  // Auto-open typing box modal when content is loaded from library
-  React.useEffect(() => {
-    if (chunks.length > 0) {
-      setDemoActive(true);
-    }
-  }, [chunks]);
+
 
   const startDemo = (category: CategoryKey = "general") => {
     setDemoCategory(category);
