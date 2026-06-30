@@ -126,7 +126,7 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-fade-in">
       
       {/* 1. Welcome Banner */}
-      <div className="relative rounded-3xl bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 md:p-10 text-white shadow-lg overflow-hidden">
+      <div className="relative rounded-3xl bg-linear-to-r from-blue-600 via-indigo-600 to-cyan-600 p-8 md:p-10 text-white shadow-lg overflow-hidden">
         <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-15 pointer-events-none hidden md:block">
           <svg
             className="w-full h-full text-white"

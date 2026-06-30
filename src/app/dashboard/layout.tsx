@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import ThemeToggle from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/vendors/ui/button";
 import {
   LayoutDashboard,
@@ -90,12 +91,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         {/* Sidebar Header */}
         <div className="h-16 border-b border-border/40 flex items-center px-6 justify-between gap-2 overflow-hidden">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="h-8 w-8 rounded-lg bg-linear-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0 shadow-xs">
-              TF
-            </span>
+          <Link href="/" className="flex items-center gap-2.5">
+            <Logo className="h-8 w-8 shrink-0" />
             {isSidebarOpen && (
-              <span className="text-xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-indigo-500 to-purple-600 tracking-tighter animate-fade-in">
+              <span className="text-xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-500 via-indigo-500 to-cyan-500 tracking-tighter animate-fade-in">
                 TYPEFLOW
               </span>
             )}
@@ -204,11 +203,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="w-64 h-full bg-card border-r border-border/40 p-6 flex flex-col justify-between">
             <div className="space-y-8">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="h-8 w-8 rounded-lg bg-linear-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">
-                    TF
-                  </span>
-                  <span className="text-xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-indigo-500 to-purple-600 tracking-tighter">
+                <div className="flex items-center gap-2.5">
+                  <Logo className="h-8 w-8" />
+                  <span className="text-xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-500 via-indigo-500 to-cyan-500 tracking-tighter">
                     TYPEFLOW
                   </span>
                 </div>

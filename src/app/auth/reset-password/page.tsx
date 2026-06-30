@@ -13,6 +13,7 @@ import {
   CardFooter,
 } from "@/vendors/ui/card";
 import ThemeToggle from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 import { Mail, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 
 export default function ResetPasswordPage() {
@@ -56,13 +57,14 @@ export default function ResetPasswordPage() {
 
       <div className="w-full max-w-md animate-fade-in">
         {/* Logo / Header */}
-        <div className="text-center mb-8">
-          <Link href="/">
-            <h1 className="text-4xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-indigo-500 to-purple-600 tracking-tighter mb-2 hover:opacity-90 transition-opacity">
+        <div className="text-center mb-6 flex flex-col items-center">
+          <Link href="/" className="inline-flex flex-col items-center gap-3">
+            <Logo className="h-16 w-16" />
+            <h1 className="text-4xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-500 via-indigo-500 to-cyan-500 tracking-tighter hover:opacity-90 transition-opacity">
               TYPEFLOW
             </h1>
           </Link>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-sm mt-2">
             Resume your learning journey securely.
           </p>
         </div>

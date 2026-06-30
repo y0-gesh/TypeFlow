@@ -5,6 +5,7 @@ import { useTypingStore } from "@/store/useTypingStore";
 import TypingBox from "@/components/TypingBox";
 import ProgressBar from "@/components/ProgressBar";
 import ThemeToggle from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/vendors/ui/button";
 import {
   Card,
@@ -69,11 +70,9 @@ export default function LandingPage() {
       {/* Navigation Header */}
       <header className="border-b border-border/40 sticky top-0 bg-background/80 backdrop-blur-md z-30 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="h-9 w-9 rounded-xl bg-linear-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/20">
-              TF
-            </span>
-            <span className="text-2xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-indigo-500 to-purple-600 tracking-tighter">
+          <div className="flex items-center gap-2.5">
+            <Logo className="h-9 w-9" />
+            <span className="text-2xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-500 via-indigo-500 to-cyan-500 tracking-tighter">
               TYPEFLOW
             </span>
           </div>
@@ -125,7 +124,7 @@ export default function LandingPage() {
         <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[1.1] mb-6 animate-fade-in bg-clip-text text-transparent bg-linear-to-b from-foreground via-foreground to-foreground/75 dark:from-white dark:via-white dark:to-neutral-400">
           Practice typing on
           <br />
-          <span className="bg-clip-text text-transparent bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500">
+          <span className="bg-clip-text text-transparent bg-linear-to-r from-blue-500 via-indigo-500 to-cyan-500">
             content you care about
           </span>
         </h1>
@@ -210,7 +209,7 @@ export default function LandingPage() {
 
             <Card className="hover:shadow-md hover:translate-y-[-2px] hover:border-border/80 transition-all duration-200">
               <CardHeader>
-                <div className="h-12 w-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 mb-2">
+                <div className="h-12 w-12 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-500 mb-2">
                   <BarChart3 className="h-6 w-6" />
                 </div>
                 <CardTitle className="text-lg">Key Heatmaps</CardTitle>
