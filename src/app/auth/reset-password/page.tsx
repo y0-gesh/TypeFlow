@@ -35,8 +35,8 @@ export default function ResetPasswordPage() {
   const router = useRouter();
   const { resetPassword, updatePassword, isMock, user } = useAuth();
 
-  // Step state: "request" (email) | "update" (new password) | "complete" (success)
-  const [step, setStep] = useState<"request" | "update" | "complete">("request");
+  // Step state: "request" (email) | "sent" (email dispatched) | "update" (new password) | "complete" (success)
+  const [step, setStep] = useState<"request" | "sent" | "update" | "complete">("request");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
@@ -96,9 +96,8 @@ export default function ResetPasswordPage() {
       if (authError) {
         setError(authError.message || "Failed to initiate password reset");
       } else {
-        setSuccessMsg("Verification confirmed! Now choose your new password below.");
-        // Immediately transition to the new password step for an effortless UX
-        setStep("update");
+        setSuccessMsg("The reset password request has been sent to your email.");
+        setStep("sent");
       }
     } catch (err: any) {
       setError("An unexpected error occurred. Please try again.");
@@ -230,12 +229,12 @@ export default function ResetPasswordPage() {
                     {isLoading ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Verifying...
+                        Sending Reset Link...
                       </>
                     ) : (
                       <>
-                        Continue to Set Password
-                        <ArrowRight className="h-4 w-4" />
+                        <Mail className="h-4 w-4" />
+                        Send Reset Link
                       </>
                     )}
                   </Button>
@@ -251,6 +250,88 @@ export default function ResetPasswordPage() {
                     className="text-xs text-primary hover:underline font-semibold cursor-pointer"
                   >
                     Already have a recovery token or link? Set password directly
+                  </button>
+                </div>
+              </CardContent>
+
+              <CardFooter className="justify-between pt-2 border-t border-border/40">
+                <Link
+                  href="/auth/login"
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-bold transition-colors"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back to Login
+                </Link>
+              </CardFooter>
+            </>
+          )}
+
+          {/* STEP: RESET REQUEST SENT TO EMAIL */}
+          {step === "sent" && (
+            <>
+              <CardHeader className="pb-3 text-center">
+                <div className="mx-auto w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-2">
+                  <CheckCircle className="h-6 w-6" />
+                </div>
+                <CardTitle className="text-xl font-black">Reset Request Sent</CardTitle>
+                <CardDescription className="text-xs">
+                  The reset password request has been sent to your email.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl space-y-2 text-center">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    We have sent a secure password reset link to:
+                  </p>
+                  <p className="text-sm font-bold text-foreground break-all">
+                    {email}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground pt-1 leading-relaxed">
+                    Please check your email and click the reset password link in the email to create a new password.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    onClick={(e) => handleRequestReset(e as any)}
+                    disabled={isLoading}
+                    className="w-full h-10 text-xs font-bold rounded-xl cursor-pointer"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Resending...
+                      </>
+                    ) : (
+                      "Resend Email"
+                    )}
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setError("");
+                      setSuccessMsg("");
+                      setStep("request");
+                    }}
+                    className="w-full h-10 text-xs text-muted-foreground hover:text-foreground font-semibold rounded-xl cursor-pointer"
+                  >
+                    Use a different email address
+                  </Button>
+                </div>
+
+                <div className="pt-2 text-center border-t border-border/30">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError("");
+                      setStep("update");
+                    }}
+                    className="text-xs text-primary hover:underline font-semibold cursor-pointer"
+                  >
+                    Already opened the link or have a token? Set password now
                   </button>
                 </div>
               </CardContent>
