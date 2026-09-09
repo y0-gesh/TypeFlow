@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useTypingStore } from "@/store/useTypingStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { Button } from "@/vendors/ui/button";
@@ -85,6 +85,28 @@ export default function TypingBox() {
   if (!currentChunk) return null;
 
   const characters = currentChunk.text.split("");
+
+  // Group characters into words to prevent breaking words across line endings
+  const words = useMemo(() => {
+    if (!currentChunk?.text) return [];
+    const text = currentChunk.text;
+    const list: { id: number; chars: { char: string; index: number }[] }[] = [];
+    let currentWord: { char: string; index: number }[] = [];
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      currentWord.push({ char, index: i });
+      // When encountering a space or newline, complete this word token
+      if (char === " " || char === "\n") {
+        list.push({ id: list.length, chars: currentWord });
+        currentWord = [];
+      }
+    }
+    if (currentWord.length > 0) {
+      list.push({ id: list.length, chars: currentWord });
+    }
+    return list;
+  }, [currentChunk?.text]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Tab") {
@@ -212,44 +234,48 @@ export default function TypingBox() {
       >
         {/* Dynamic Typography wrapper */}
         <div 
-          className="flex flex-wrap gap-x-[2px] w-full"
+          className="flex flex-wrap w-full leading-loose font-mono select-none"
           style={{ fontSize: `${fontSize}px` }}
         >
-          {characters.map((char, index) => {
-            let colorClass = "text-muted-foreground/35"; // Uncompleted
-            let cursorClass = "";
+          {words.map((word) => (
+            <span key={word.id} className="inline-flex whitespace-nowrap">
+              {word.chars.map(({ char, index }) => {
+                let colorClass = "text-muted-foreground/35"; // Uncompleted
+                let cursorClass = "";
 
-            if (index < userInput.length) {
-              colorClass =
-                userInput[index] === char
-                  ? "text-foreground font-semibold dark:text-gray-100" // Correct
-                  : "text-rose-500 font-bold bg-rose-500/10 border-b border-rose-500 decoration-none"; // Incorrect
-            }
-
-            // Blinking Caret indicator based on caretStyle setting
-            if (index === userInput.length) {
-              if (isFocused) {
-                if (caretStyle === "block") {
-                  cursorClass = "bg-primary/80 text-primary-foreground px-0.5 animate-cursor-blink";
-                } else if (caretStyle === "underline") {
-                  cursorClass = "border-b-2 border-primary animate-cursor-blink";
-                } else if (caretStyle === "hidden") {
-                  cursorClass = "";
-                } else {
-                  cursorClass = "border-l-3 border-primary animate-cursor-blink -ml-[3px]";
+                if (index < userInput.length) {
+                  colorClass =
+                    userInput[index] === char
+                      ? "text-foreground font-semibold dark:text-gray-100" // Correct
+                      : "text-rose-500 font-bold bg-rose-500/10 border-b border-rose-500 decoration-none"; // Incorrect
                 }
-              }
-            }
 
-            return (
-              <span
-                key={index}
-                className={`${colorClass} ${cursorClass} whitespace-pre font-mono transition-colors duration-100`}
-              >
-                {char}
-              </span>
-            );
-          })}
+                // Blinking Caret indicator based on caretStyle setting
+                if (index === userInput.length) {
+                  if (isFocused) {
+                    if (caretStyle === "block") {
+                      cursorClass = "bg-primary/80 text-primary-foreground px-0.5 animate-cursor-blink";
+                    } else if (caretStyle === "underline") {
+                      cursorClass = "border-b-2 border-primary animate-cursor-blink";
+                    } else if (caretStyle === "hidden") {
+                      cursorClass = "";
+                    } else {
+                      cursorClass = "border-l-3 border-primary animate-cursor-blink -ml-[3px]";
+                    }
+                  }
+                }
+
+                return (
+                  <span
+                    key={index}
+                    className={`${colorClass} ${cursorClass} whitespace-pre font-mono transition-colors duration-100`}
+                  >
+                    {char}
+                  </span>
+                );
+              })}
+            </span>
+          ))}
           
           {/* Caret at the end of the text if fully completed */}
           {userInput.length === characters.length && isFocused && caretStyle !== "hidden" && (
