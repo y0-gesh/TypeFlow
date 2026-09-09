@@ -4,31 +4,7 @@ These user personas represent the core target archetypes for the TypeFlow platfo
 
 ---
 
-## Persona 1: Devon the Developer
-*“I want to build muscle memory for programming syntax and typing symbols so I can write code as fast as I think.”*
-
-### Profile
-* **Age**: 26
-* **Role**: Junior Software Engineer
-* **Location**: San Francisco, CA
-* **Tech Comfort**: Expert
-
-### Goals & Motivations
-* Build speed and typing accuracy on non-standard keys (brackets `{}`, brackets `[]`, operators `=>`, semicolons `;`, backticks `` ` ``).
-* Ingest technical documentation (e.g., API references, markdown files) to study frameworks while practicing typing.
-* Build muscle memory for keyboard-heavy environments like Vim.
-
-### Pain Points with Existing Tools
-* Traditional typing trainers only use English sentences and ignore coding-specific syntax.
-* Custom lists on other platforms lack code formatting (indentation, tabs, brackets) and make code-typing practice feel unnatural.
-
-### TypeFlow Use Case
-* Ingests `.md` or `.txt` source files (e.g., React component drafts or Rust algorithm exercises).
-* Focuses on custom keyboard layouts (e.g., Colemak) and custom monospace fonts to mimic his actual IDE layout.
-
----
-
-## Persona 2: Sophia the Student
+## Persona 1: Sophia the Student
 *“I want to review my biology textbook and lecture notes while practicing my typing, turning passive study time into active practice.”*
 
 ### Profile
@@ -53,7 +29,7 @@ These user personas represent the core target archetypes for the TypeFlow platfo
 
 ---
 
-## Persona 3: Arthur the Aspiring Writer
+## Persona 2: Arthur the Aspiring Writer
 *“I want to type out classic novels and my own drafts to internalize sentence structures, cadence, and vocabulary.”*
 
 ### Profile
@@ -78,7 +54,7 @@ These user personas represent the core target archetypes for the TypeFlow platfo
 
 ---
 
-## Persona 4: Layla the Language Learner
+## Persona 3: Layla the Language Learner
 *“I want to practice typing in French and Spanish using authentic articles so I can master the layout and spelling concurrently.”*
 
 ### Profile

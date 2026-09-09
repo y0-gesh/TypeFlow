@@ -102,7 +102,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto">
+        <nav className="py-6 px-4 space-y-1.5 overflow-y-auto h-[calc(100vh-149px)]">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
