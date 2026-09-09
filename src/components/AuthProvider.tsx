@@ -96,7 +96,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const resetPassword = async (email: string) => {
     try {
-      const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/auth/reset-password` : '';
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://type-flow-one.vercel.app';
+      const redirectTo = `${siteUrl}/auth/reset-password`;
       const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo,
       });
