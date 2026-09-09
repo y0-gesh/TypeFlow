@@ -28,13 +28,15 @@ export default function SettingsPage() {
     keyboardLayout, 
     zenMode, 
     adaptiveMode,
+    showKeyboard,
     setFontFamily, 
     setFontSize, 
     setTheme, 
     setCaretStyle, 
     setKeyboardLayout, 
     setZenMode,
-    setAdaptiveMode
+    setAdaptiveMode,
+    setShowKeyboard
   } = useSettingsStore();
 
   const { apiKey, setApiKey } = useAiStore();
@@ -357,6 +359,43 @@ export default function SettingsPage() {
                 </div>
                 <div className={`w-11 h-6 rounded-full transition-colors flex items-center p-0.5 cursor-pointer ${zenMode ? "bg-primary" : "bg-secondary"}`}>
                   <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 ${zenMode ? "translate-x-5" : "translate-x-0"}`} />
+                </div>
+              </button>
+            </CardContent>
+          </Card>
+
+          {/* Virtual Keyboard Visibility Switch */}
+          <Card className="shadow-xs border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-bold">
+                <Keyboard className="h-4.5 w-4.5 text-primary" />
+                Virtual Keyboard Display
+              </CardTitle>
+              <CardDescription>
+                Show or hide the interactive on-screen keycaps guide.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-6">
+              <button
+                type="button"
+                onClick={() => setShowKeyboard(!showKeyboard)}
+                className={`
+                  w-full flex items-center justify-between p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer
+                  ${
+                    showKeyboard
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border/60 hover:bg-secondary/40"
+                  }
+                `}
+              >
+                <div>
+                  <h5 className="text-xs font-bold">Show Virtual Keyboard</h5>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 max-w-[200px] leading-normal">
+                    Displays highlighted target keys and layout positions directly under your active exercise.
+                  </p>
+                </div>
+                <div className={`w-11 h-6 rounded-full transition-colors flex items-center p-0.5 cursor-pointer ${showKeyboard ? "bg-primary" : "bg-secondary"}`}>
+                  <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 ${showKeyboard ? "translate-x-5" : "translate-x-0"}`} />
                 </div>
               </button>
             </CardContent>

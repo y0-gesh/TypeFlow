@@ -8,6 +8,7 @@ interface SettingsState {
   keyboardLayout: string;
   zenMode: boolean;
   adaptiveMode: boolean;
+  showKeyboard: boolean;
   setFontFamily: (font: string) => void;
   setFontSize: (size: number) => void;
   setTheme: (theme: string) => void;
@@ -15,6 +16,8 @@ interface SettingsState {
   setKeyboardLayout: (layout: string) => void;
   setZenMode: (enabled: boolean) => void;
   setAdaptiveMode: (enabled: boolean) => void;
+  setShowKeyboard: (show: boolean) => void;
+  toggleKeyboard: () => void;
 }
 
 const STORAGE_KEY = "typeflow_settings";
@@ -27,7 +30,8 @@ const loadSettings = () => {
     caretStyle: "line",
     keyboardLayout: "qwerty",
     zenMode: false,
-    adaptiveMode: false
+    adaptiveMode: false,
+    showKeyboard: true
   };
 
   if (typeof window === "undefined") {
@@ -44,7 +48,8 @@ const loadSettings = () => {
         caretStyle: parsed.caretStyle || defaults.caretStyle,
         keyboardLayout: parsed.keyboardLayout || defaults.keyboardLayout,
         zenMode: parsed.zenMode !== undefined ? parsed.zenMode : defaults.zenMode,
-        adaptiveMode: parsed.adaptiveMode !== undefined ? parsed.adaptiveMode : defaults.adaptiveMode
+        adaptiveMode: parsed.adaptiveMode !== undefined ? parsed.adaptiveMode : defaults.adaptiveMode,
+        showKeyboard: parsed.showKeyboard !== undefined ? parsed.showKeyboard : defaults.showKeyboard
       };
     } catch (e) {
       console.error("Failed to parse settings", e);
@@ -89,6 +94,20 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setAdaptiveMode: (adaptiveMode) => {
     set({ adaptiveMode });
     saveToStorage(get());
+  },
+
+  setShowKeyboard: (showKeyboard) => {
+    set({ showKeyboard });
+    saveToStorage(get());
+  },
+
+  toggleKeyboard: () => {
+    set((state) => {
+      const next = !state.showKeyboard;
+      const updated = { ...state, showKeyboard: next };
+      saveToStorage(updated);
+      return { showKeyboard: next };
+    });
   }
 }));
 
@@ -103,7 +122,8 @@ const saveToStorage = (state: SettingsState) => {
         caretStyle: state.caretStyle,
         keyboardLayout: state.keyboardLayout,
         zenMode: state.zenMode,
-        adaptiveMode: state.adaptiveMode
+        adaptiveMode: state.adaptiveMode,
+        showKeyboard: state.showKeyboard
       })
     );
   }

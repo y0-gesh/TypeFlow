@@ -1,5 +1,5 @@
 import { cleanText } from "@/utils/textCleaner";
-import { splitSentences, createChunks } from "@/utils/chunkGenerator";
+import { splitSentences, createChunks, createBalancedChunks } from "@/utils/chunkGenerator";
 import { getDifficulty } from "@/utils/difficulty";
 
 export interface Chunk {
@@ -30,8 +30,7 @@ export const contentEngine = {
    */
   processContent: (rawText: string): Chunk[] => {
     const cleaned = cleanText(rawText);
-    const sentences = splitSentences(cleaned);
-    const chunks = createChunks(sentences);
+    const chunks = createBalancedChunks(cleaned);
 
     return chunks.map((text, index) => ({
       id: `chunk-${index}`,
@@ -123,19 +122,10 @@ export const contentEngine = {
 };
 
 /**
- * Groups raw chapter content into paragraphs, splits sentences, chunks, and formats chapter lessons.
+ * Groups raw chapter content into paragraphs, chunks with 50-100 words balance, and formats chapter lessons.
  */
 function createProcessedChapter(title: string, rawContent: string, sequenceNumber: number): ProcessedChapter {
-  // Split content into paragraphs by double-newline
-  const paragraphs = rawContent.split(/\n\s*\n+/).filter(Boolean);
-  const sentences: string[] = [];
-
-  for (const para of paragraphs) {
-    const paraSentences = splitSentences(para);
-    sentences.push(...paraSentences);
-  }
-
-  const chunks = createChunks(sentences);
+  const chunks = createBalancedChunks(rawContent);
 
   const lessons = chunks.map((chunkText, idx) => ({
     content: chunkText,

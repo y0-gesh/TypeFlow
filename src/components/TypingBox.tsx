@@ -36,7 +36,7 @@ export default function TypingBox() {
     toggleFocusMode
   } = useTypingStore();
 
-  const { fontSize, caretStyle, keyboardLayout, zenMode } = useSettingsStore();
+  const { fontSize, caretStyle, keyboardLayout, zenMode, showKeyboard, toggleKeyboard } = useSettingsStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -114,7 +114,7 @@ export default function TypingBox() {
   };
 
   const showStatsHeader = (!focusMode && !zenMode) || lessonStatus !== "typing";
-  const showKeyboard = !zenMode && lessonStatus === "typing";
+  const isKeyboardVisible = showKeyboard && !zenMode && lessonStatus === "typing";
 
   return (
     <div className="relative w-full max-w-4xl mx-auto mt-8 px-4 animate-fade-in space-y-6">
@@ -153,6 +153,20 @@ export default function TypingBox() {
 
         {/* Action controls */}
         <div className="flex items-center gap-2">
+          {/* Virtual Keyboard Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleKeyboard}
+            className={`h-9 w-9 rounded-xl hover:bg-secondary cursor-pointer ${
+              showKeyboard ? "text-primary bg-primary/5" : "text-muted-foreground hover:text-foreground"
+            }`}
+            title={showKeyboard ? "Hide Keyboard Guide" : "Show Keyboard Guide"}
+            aria-label={showKeyboard ? "Hide Keyboard Guide" : "Show Keyboard Guide"}
+          >
+            <Keyboard className="h-4.5 w-4.5" />
+          </Button>
+
           {/* Sound Toggle */}
           <Button
             variant="ghost"
@@ -281,16 +295,26 @@ export default function TypingBox() {
       </div>
 
       {/* 3. VIRTUAL KEYBOARD LAYOUT DISPLAY */}
-      {showKeyboard && (
+      {isKeyboardVisible && (
         <div className="p-4 bg-secondary/5 border border-border/40 rounded-3xl space-y-2 max-w-xl mx-auto animate-fade-in select-none">
           <div className="text-[10px] uppercase font-black text-muted-foreground/75 tracking-widest mb-2 flex items-center justify-between px-1">
             <span className="flex items-center gap-1.5">
               <Keyboard className="h-3.5 w-3.5" />
               Keyboard Layout Guide
             </span>
-            <span className="font-mono bg-secondary/80 px-2 py-0.5 rounded border border-border/40">
-              {keyboardLayout}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono bg-secondary/80 px-2 py-0.5 rounded border border-border/40">
+                {keyboardLayout}
+              </span>
+              <button
+                type="button"
+                onClick={toggleKeyboard}
+                className="text-[10px] font-bold text-muted-foreground hover:text-foreground cursor-pointer transition-colors px-1.5 py-0.5 rounded hover:bg-secondary"
+                title="Hide keyboard"
+              >
+                Hide
+              </button>
+            </div>
           </div>
 
           {(() => {
