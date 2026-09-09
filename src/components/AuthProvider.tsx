@@ -11,6 +11,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
   signOut: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ data: any; error: any }>;
+  updatePassword: (password: string, email?: string) => Promise<{ data: any; error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => ({ data: null, error: null }),
   signOut: async () => ({ error: null }),
   resetPassword: async () => ({ data: null, error: null }),
+  updatePassword: async () => ({ data: null, error: null }),
 });
 
 interface AuthProviderProps {
@@ -94,9 +96,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const resetPassword = async (email: string) => {
     try {
-      const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/auth/login` : '';
+      const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/auth/reset-password` : '';
       const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo,
+      });
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  };
+
+  const updatePassword = async (password: string, email?: string) => {
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        password,
+        ...(email ? { email } : {}),
       });
       if (error) throw error;
       return { data, error: null };
@@ -115,6 +130,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         signIn,
         signOut,
         resetPassword,
+        updatePassword,
       }}
     >
       {children}

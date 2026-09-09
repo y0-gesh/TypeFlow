@@ -85,12 +85,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Desktop Sidebar */}
       <aside
         className={`
-          hidden md:flex flex-col border-r border-border/40 bg-card transition-all duration-300 shrink-0 z-20
+          hidden md:flex flex-col border-r border-border/40 bg-card transition-all duration-300 shrink-0 z-20 sticky top-0 h-screen
           ${isSidebarOpen ? "w-64" : "w-20"}
         `}
       >
         {/* Sidebar Header */}
-        <div className="h-16 border-b border-border/40 flex items-center px-6 justify-between gap-2 overflow-hidden">
+        <div className="h-16 border-b border-border/40 flex items-center px-6 justify-between gap-2 overflow-hidden shrink-0">
           <Link href="/" className="flex items-center gap-2.5">
             <Logo className="h-8 w-8 shrink-0" />
             {isSidebarOpen && (
@@ -102,7 +102,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -316,7 +316,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Dashboard Content Container */}
-        <main className="flex-1 p-6 md:p-10 overflow-y-auto">{children}</main>
+        <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+          <div className="max-w-7xl mx-auto w-full">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );

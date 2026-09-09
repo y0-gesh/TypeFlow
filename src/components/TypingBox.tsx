@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useTypingStore } from "@/store/useTypingStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { Button } from "@/vendors/ui/button";
@@ -36,7 +36,7 @@ export default function TypingBox() {
     toggleFocusMode
   } = useTypingStore();
 
-  const { fontSize, caretStyle, keyboardLayout, zenMode } = useSettingsStore();
+  const { fontSize, caretStyle, keyboardLayout, zenMode, showKeyboard, toggleKeyboard } = useSettingsStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -86,6 +86,28 @@ export default function TypingBox() {
 
   const characters = currentChunk.text.split("");
 
+  // Group characters into words to prevent breaking words across line endings
+  const words = useMemo(() => {
+    if (!currentChunk?.text) return [];
+    const text = currentChunk.text;
+    const list: { id: number; chars: { char: string; index: number }[] }[] = [];
+    let currentWord: { char: string; index: number }[] = [];
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      currentWord.push({ char, index: i });
+      // When encountering a space or newline, complete this word token
+      if (char === " " || char === "\n") {
+        list.push({ id: list.length, chars: currentWord });
+        currentWord = [];
+      }
+    }
+    if (currentWord.length > 0) {
+      list.push({ id: list.length, chars: currentWord });
+    }
+    return list;
+  }, [currentChunk?.text]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Tab") {
       e.preventDefault();
@@ -114,7 +136,7 @@ export default function TypingBox() {
   };
 
   const showStatsHeader = (!focusMode && !zenMode) || lessonStatus !== "typing";
-  const showKeyboard = !zenMode && lessonStatus === "typing";
+  const isKeyboardVisible = showKeyboard && !zenMode && lessonStatus === "typing";
 
   return (
     <div className="relative w-full max-w-4xl mx-auto mt-8 px-4 animate-fade-in space-y-6">
@@ -153,6 +175,20 @@ export default function TypingBox() {
 
         {/* Action controls */}
         <div className="flex items-center gap-2">
+          {/* Virtual Keyboard Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleKeyboard}
+            className={`h-9 w-9 rounded-xl hover:bg-secondary cursor-pointer ${
+              showKeyboard ? "text-primary bg-primary/5" : "text-muted-foreground hover:text-foreground"
+            }`}
+            title={showKeyboard ? "Hide Keyboard Guide" : "Show Keyboard Guide"}
+            aria-label={showKeyboard ? "Hide Keyboard Guide" : "Show Keyboard Guide"}
+          >
+            <Keyboard className="h-4.5 w-4.5" />
+          </Button>
+
           {/* Sound Toggle */}
           <Button
             variant="ghost"
@@ -198,44 +234,48 @@ export default function TypingBox() {
       >
         {/* Dynamic Typography wrapper */}
         <div 
-          className="flex flex-wrap gap-x-[2px] w-full"
+          className="flex flex-wrap w-full leading-loose font-mono select-none"
           style={{ fontSize: `${fontSize}px` }}
         >
-          {characters.map((char, index) => {
-            let colorClass = "text-muted-foreground/35"; // Uncompleted
-            let cursorClass = "";
+          {words.map((word) => (
+            <span key={word.id} className="inline-flex whitespace-nowrap">
+              {word.chars.map(({ char, index }) => {
+                let colorClass = "text-muted-foreground/35"; // Uncompleted
+                let cursorClass = "";
 
-            if (index < userInput.length) {
-              colorClass =
-                userInput[index] === char
-                  ? "text-foreground font-semibold dark:text-gray-100" // Correct
-                  : "text-rose-500 font-bold bg-rose-500/10 border-b border-rose-500 decoration-none"; // Incorrect
-            }
-
-            // Blinking Caret indicator based on caretStyle setting
-            if (index === userInput.length) {
-              if (isFocused) {
-                if (caretStyle === "block") {
-                  cursorClass = "bg-primary/80 text-primary-foreground px-0.5 animate-cursor-blink";
-                } else if (caretStyle === "underline") {
-                  cursorClass = "border-b-2 border-primary animate-cursor-blink";
-                } else if (caretStyle === "hidden") {
-                  cursorClass = "";
-                } else {
-                  cursorClass = "border-l-3 border-primary animate-cursor-blink -ml-[3px]";
+                if (index < userInput.length) {
+                  colorClass =
+                    userInput[index] === char
+                      ? "text-foreground font-semibold dark:text-gray-100" // Correct
+                      : "text-rose-500 font-bold bg-rose-500/10 border-b border-rose-500 decoration-none"; // Incorrect
                 }
-              }
-            }
 
-            return (
-              <span
-                key={index}
-                className={`${colorClass} ${cursorClass} whitespace-pre font-mono transition-colors duration-100`}
-              >
-                {char}
-              </span>
-            );
-          })}
+                // Blinking Caret indicator based on caretStyle setting
+                if (index === userInput.length) {
+                  if (isFocused) {
+                    if (caretStyle === "block") {
+                      cursorClass = "bg-primary/80 text-primary-foreground px-0.5 animate-cursor-blink";
+                    } else if (caretStyle === "underline") {
+                      cursorClass = "border-b-2 border-primary animate-cursor-blink";
+                    } else if (caretStyle === "hidden") {
+                      cursorClass = "";
+                    } else {
+                      cursorClass = "border-l-3 border-primary animate-cursor-blink -ml-[3px]";
+                    }
+                  }
+                }
+
+                return (
+                  <span
+                    key={index}
+                    className={`${colorClass} ${cursorClass} whitespace-pre font-mono transition-colors duration-100`}
+                  >
+                    {char}
+                  </span>
+                );
+              })}
+            </span>
+          ))}
           
           {/* Caret at the end of the text if fully completed */}
           {userInput.length === characters.length && isFocused && caretStyle !== "hidden" && (
@@ -281,16 +321,26 @@ export default function TypingBox() {
       </div>
 
       {/* 3. VIRTUAL KEYBOARD LAYOUT DISPLAY */}
-      {showKeyboard && (
+      {isKeyboardVisible && (
         <div className="p-4 bg-secondary/5 border border-border/40 rounded-3xl space-y-2 max-w-xl mx-auto animate-fade-in select-none">
           <div className="text-[10px] uppercase font-black text-muted-foreground/75 tracking-widest mb-2 flex items-center justify-between px-1">
             <span className="flex items-center gap-1.5">
               <Keyboard className="h-3.5 w-3.5" />
               Keyboard Layout Guide
             </span>
-            <span className="font-mono bg-secondary/80 px-2 py-0.5 rounded border border-border/40">
-              {keyboardLayout}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono bg-secondary/80 px-2 py-0.5 rounded border border-border/40">
+                {keyboardLayout}
+              </span>
+              <button
+                type="button"
+                onClick={toggleKeyboard}
+                className="text-[10px] font-bold text-muted-foreground hover:text-foreground cursor-pointer transition-colors px-1.5 py-0.5 rounded hover:bg-secondary"
+                title="Hide keyboard"
+              >
+                Hide
+              </button>
+            </div>
           </div>
 
           {(() => {

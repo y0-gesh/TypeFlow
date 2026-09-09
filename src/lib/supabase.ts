@@ -151,28 +151,44 @@ const mockSupabase = {
       if (!user) {
         return { data: null, error: { message: 'Email address not found' } };
       }
+
+      // Establish mock recovery session so updateUser can execute seamlessly
+      const session: Session = {
+        access_token: `mock-recovery-token-${Math.random().toString(36).substring(2, 11)}`,
+        refresh_token: `mock-refresh-${Math.random().toString(36).substring(2, 11)}`,
+        user: user as User,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        expires_in: 3600,
+        token_type: 'bearer'
+      };
+      saveMockSession(session);
+      triggerAuthStateChange('PASSWORD_RECOVERY', session);
+
       console.log(`[Mock Auth] Password reset link sent to ${email} redirecting to ${redirectTo}`);
-      return { data: {}, error: null };
+      return { data: { user }, error: null };
     },
 
-    updateUser: async ({ password }: any) => {
+    updateUser: async ({ password, email }: any) => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       const session = getMockSession();
-      if (!session || !session.user) {
-        return { data: { user: null }, error: { message: 'Not authenticated' } };
+      const users = getMockUsers();
+      let userIdx = -1;
+
+      if (session && session.user) {
+        userIdx = users.findIndex((u) => u.id === session.user.id);
+      }
+      if (userIdx === -1 && email) {
+        userIdx = users.findIndex((u) => u.email === email);
       }
 
-      const users = getMockUsers();
-      const userIdx = users.findIndex((u) => u.id === session.user.id);
-      
       if (userIdx === -1) {
-        return { data: { user: null }, error: { message: 'User not found' } };
+        return { data: { user: null }, error: { message: 'Not authenticated or user session expired' } };
       }
 
       users[userIdx].password = password;
       saveMockUsers(users);
 
-      return { data: { user: session.user }, error: null };
+      return { data: { user: users[userIdx] as User }, error: null };
     },
 
     onAuthStateChange: (callback: any) => {
